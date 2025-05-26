@@ -47,8 +47,8 @@ token = "..."
 The bot template is licensed under the [Apache License 2.0][5].
 
 
-[0]: https://goreportcard.com/badge/github.com/disgoorg/bot-template
-[1]: https://goreportcard.com/report/github.com/disgoorg/bot-template
+[0]: https://goreportcard.com/badge/github.com/makeitchaccha/text-to-speech
+[1]: https://goreportcard.com/report/github.com/makeitchaccha/text-to-speech
 
 [2]: https://img.shields.io/github/go-mod/go-version/disgoorg/bot-template
 [3]: https://golang.org/doc/devel/release.html
@@ -56,10 +56,10 @@ The bot template is licensed under the [Apache License 2.0][5].
 [4]: https://img.shields.io/github/license/disgoorg/bot-template
 [5]: LICENSE
 
-[6]: https://github.com/disgoorg/bot-template/actions/workflows/docker.yml/badge.svg
-[7]: https://github.com/disgoorg/bot-template/actions/workflows/docker.yml
+[6]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/docker.yml/badge.svg
+[7]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/docker.yml
 
-[8]: https://github.com/disgoorg/bot-template/actions/workflows/test.yml/badge.svg
-[9]: https://github.com/disgoorg/bot-template/actions/workflows/test.yml
+[8]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/test.yml/badge.svg
+[9]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/test.yml
 
 [10]: https://discord.com/developers/applications

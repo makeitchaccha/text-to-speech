@@ -4,10 +4,10 @@ import (
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/events"
 
-	"github.com/disgoorg/bot-template/bottemplate"
+	"github.com/makeitchaccha/text-to-speech/ttsbot"
 )
 
-func MessageHandler(b *bottemplate.Bot) bot.EventListener {
+func MessageHandler(b *ttsbot.Bot) bot.EventListener {
 	return bot.NewListenerFunc(func(e *events.MessageCreate) {
 		// TODO: handle message
 	})

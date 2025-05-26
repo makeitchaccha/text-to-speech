@@ -1,4 +1,4 @@
-package bottemplate
+package ttsbot
 
 import (
 	"context"

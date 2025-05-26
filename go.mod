@@ -1,4 +1,4 @@
-module github.com/disgoorg/bot-template
+module github.com/makeitchaccha/text-to-speech
 
 go 1.22
 
