@@ -3,8 +3,10 @@ package session
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/disgoorg/audio/mp3"
@@ -28,22 +30,37 @@ const (
 	LeaveResultClose
 )
 
-func (s *Session) apply(opts []Opt) {
+type Config struct {
+	language  string
+	voiceName string
+}
+
+func (c *Config) apply(opts []ConfigOpt) {
 	for _, opt := range opts {
-		opt(s)
+		opt(c)
 	}
 }
 
-type Opt func(Session *Session)
+func (c *Config) validate() error {
+	if c.language == "" {
+		return fmt.Errorf("language must be provided")
+	}
+	if c.voiceName != "" && !strings.HasPrefix(c.voiceName, c.language) {
+		return fmt.Errorf("given voice name %q is not valid for language %q", c.voiceName, c.language)
+	}
+	return nil
+}
 
-func WithLanguage(language string) Opt {
-	return func(Session *Session) {
+type ConfigOpt func(Session *Config)
+
+func WithLanguage(language string) ConfigOpt {
+	return func(Session *Config) {
 		Session.language = language
 	}
 }
 
-func WithVoiceName(voiceName string) Opt {
-	return func(Session *Session) {
+func WithVoiceName(voiceName string) ConfigOpt {
+	return func(Session *Config) {
 		Session.voiceName = voiceName
 	}
 }
@@ -52,21 +69,23 @@ type Session struct {
 	engine        tts.Engine
 	textChannelID snowflake.ID
 	conn          voice.Conn
-	language      string
-	voiceName     string
+	cfg           Config
 }
 
-func New(engine tts.Engine, textChannelID snowflake.ID, conn voice.Conn, opts ...Opt) *Session {
+func New(engine tts.Engine, textChannelID snowflake.ID, conn voice.Conn, opts ...ConfigOpt) (*Session, error) {
 	session := &Session{
 		engine:        engine,
 		textChannelID: textChannelID,
 		conn:          conn,
-		language:      "en-US",
 	}
 
-	session.apply(opts)
+	session.cfg.apply(opts)
 
-	return session
+	if err := session.cfg.validate(); err != nil {
+		return nil, err
+	}
+
+	return session, nil
 }
 
 func (s *Session) Close(ctx context.Context) {
@@ -78,8 +97,8 @@ func (s *Session) requestTextToSpeech(ctx context.Context, content string) {
 	start := time.Now()
 	audioConent, err := s.engine.GenerateSpeech(ctx, tts.SpeechRequest{
 		Text:         content,
-		LanguageCode: s.language,
-		VoiceName:    s.voiceName,
+		LanguageCode: s.cfg.language,
+		VoiceName:    s.cfg.voiceName,
 	})
 
 	if err != nil {
@@ -193,4 +212,16 @@ func isVoiceChannelEmpty(cache interface {
 	})
 
 	return empty
+}
+
+func (s *Session) String() string {
+	return fmt.Sprintf("Session(textChannelID: %s, voiceChannelID: %s, language: %s, voiceName: %s)",
+		s.textChannelID, s.conn.ChannelID(), stringOrDefault(s.cfg.language), stringOrDefault(s.cfg.voiceName))
+}
+
+func stringOrDefault(s string) string {
+	if s == "" {
+		return "unspecified"
+	}
+	return s
 }

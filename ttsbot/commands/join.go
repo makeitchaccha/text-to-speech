@@ -27,25 +27,6 @@ var join = discord.SlashCommandCreate{
 			Required:     false,
 			Autocomplete: true,
 		},
-		discord.ApplicationCommandOptionInt{
-			Name:        "gender",
-			Description: "gender of the voice for text-to-speech. If not provided, a system default voice will be used.",
-			Choices: []discord.ApplicationCommandOptionChoiceInt{
-				{
-					Name:  "male",
-					Value: int(texttospeechpb.SsmlVoiceGender_MALE),
-				},
-				{
-					Name:  "female",
-					Value: int(texttospeechpb.SsmlVoiceGender_FEMALE),
-				},
-				{
-					Name:  "neutral",
-					Value: int(texttospeechpb.SsmlVoiceGender_NEUTRAL),
-				},
-			},
-			Required: false,
-		},
 		discord.ApplicationCommandOptionString{
 			Name:         "voice",
 			Description:  "Voice name for text-to-speech. If not provided, a system default voice will be used.",
@@ -100,6 +81,15 @@ func JoinHandler(engine tts.Engine, manager *session.Router) handler.CommandHand
 			return err
 		}
 
+		opts := []session.ConfigOpt{}
+		data := e.SlashCommandInteractionData()
+		if language, ok := data.OptString("language"); ok {
+			opts = append(opts, session.WithLanguage(language))
+		}
+		if voice, ok := data.OptString("voice"); ok {
+			opts = append(opts, session.WithVoiceName(voice))
+		}
+
 		// Connect to the voice channel in go routine
 		// Why? To establish the connection, we need to wait for the voice state update event
 		// and waiting for it in the same goroutine would block the response from server.
@@ -120,18 +110,27 @@ func JoinHandler(engine tts.Engine, manager *session.Router) handler.CommandHand
 			}
 
 			slog.Info("Connected to voice channel", "guildID", *guildID, "channelID", voiceChannelID)
-			if _, err := e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
-				SetContentf("Connected to voice channel %s", discord.ChannelMention(voiceChannelID)).
-				Build(),
-			); err != nil {
-				slog.Warn("Failed to update interaction response", "error", err)
+
+			textChannel := e.Channel().ID()
+
+			session, err := session.New(engine, textChannel, conn, opts...)
+			if err != nil {
+				slog.Error("Failed to create session", slog.Any("err", err), slog.String("textChannelID", textChannel.String()))
+				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
+					SetContent("Failed to create session: " + err.Error()).Build(),
+				)
 				conn.Close(context.Background())
 				return
 			}
 
-			textChannel := e.Channel().ID()
+			if _, err := e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
+				SetContentf("Connected to voice channel %s, %s", discord.ChannelMention(voiceChannelID), session).
+				Build(),
+			); err != nil {
+				slog.Warn("Failed to update interaction response", "error", err)
+			}
 
-			session := session.New(engine, textChannel, conn, session.WithLanguage("ja-JP"))
+			slog.Info("Session created", "textChannelID", textChannel, "voiceChannelID", voiceChannelID)
 			manager.Add(voiceChannelID, textChannel, session)
 		}()
 
