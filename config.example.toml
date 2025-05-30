@@ -11,3 +11,30 @@ add_source = true
 dev_guilds = []
 # the bot token
 token = "..."
+# valid languages are "en-US", "ja-JP". 
+# We are welcome for contributions to add more languages -> https://github.com/makeitchaccha/text-to-speech
+default_lang = "en-US"
+
+# tts (text-to-speech) configuration
+# the values here are used to configure the text-to-speech.
+# you can find the list of available voices here: https://cloud.google.com/text-to-speech/docs/voices
+[tts]
+# the voice to use for the text-to-speech
+default_lang = "en-US"
+# (optional) valid genders are "male", "female", "neutral"
+# ssml_gender = "..."
+# (optional) the voice name to use for the text-to-speech like "en-US-Standard-A"
+# voice_name = "..."
+
+# optional configuration for redis caching
+# this will save costs for the tts requests to the Google Cloud Text-to-Speech API.
+# if enabled, the bot will cache the tts audio files in redis.
+[redis]
+# whether to enable redis caching tts
+enable = false
+# the redis url to connect to
+url = "redis://localhost:6379"
+# the time after which the cached tts audio files expire
+# note: int values are interpreted as nanoseconds -> see here: https://pkg.go.dev/github.com/BurntSushi/toml#Decoder
+#       string values are interpreted as duration strings like "3600s" for 1 hour -> see here: https://pkg.go.dev/time#ParseDuration
+ttl = "1h"

@@ -1,10 +1,22 @@
 services:
   bot:
-    image: ghcr.io/disgoorg/bot-template
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     volumes:
       - ./config.toml:/var/lib/config.toml
     command: -config=/var/lib/config.toml --sync-commands=true
+    networks:
+      - bot
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
     networks:
       - bot
 

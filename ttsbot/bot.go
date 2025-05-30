@@ -33,8 +33,14 @@ type Bot struct {
 
 func (b *Bot) SetupBot(listeners ...bot.EventListener) error {
 	client, err := disgo.New(b.Cfg.Bot.Token,
-		bot.WithGatewayConfigOpts(gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentMessageContent)),
-		bot.WithCacheConfigOpts(cache.WithCaches(cache.FlagGuilds)),
+		bot.WithGatewayConfigOpts(gateway.WithIntents(
+			gateway.IntentGuilds,
+			gateway.IntentGuildMessages,
+			gateway.IntentMessageContent,
+			gateway.IntentGuildVoiceStates,
+			gateway.IntentGuildPresences,
+		)),
+		bot.WithCacheConfigOpts(cache.WithCaches(cache.FlagGuilds, cache.FlagVoiceStates)),
 		bot.WithEventListeners(b.Paginator),
 		bot.WithEventListeners(listeners...),
 	)
@@ -47,7 +53,7 @@ func (b *Bot) SetupBot(listeners ...bot.EventListener) error {
 }
 
 func (b *Bot) OnReady(_ *events.Ready) {
-	slog.Info("bot-template ready")
+	slog.Info("bot ready")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := b.Client.SetPresence(ctx, gateway.WithListeningActivity("you"), gateway.WithOnlineStatus(discord.OnlineStatusOnline)); err != nil {
