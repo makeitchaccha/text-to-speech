@@ -38,7 +38,6 @@ func (b *Bot) SetupBot(listeners ...bot.EventListener) error {
 			gateway.IntentGuildMessages,
 			gateway.IntentMessageContent,
 			gateway.IntentGuildVoiceStates,
-			gateway.IntentGuildPresences,
 		)),
 		bot.WithCacheConfigOpts(cache.WithCaches(cache.FlagGuilds, cache.FlagVoiceStates)),
 		bot.WithEventListeners(b.Paginator),
