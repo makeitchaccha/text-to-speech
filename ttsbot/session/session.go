@@ -198,16 +198,13 @@ func isVoiceChannelEmpty(cache interface {
 
 		// ignore bot
 		member, ok := cache.Member(guildID, voiceState.UserID)
-		if !ok {
-			return
-		}
-
-		if member.User.Bot {
+		if ok && member.User.Bot {
 			return
 		}
 
 		if voiceState.ChannelID != nil && *voiceState.ChannelID == channelID {
 			empty = false
+			return
 		}
 	})
 
