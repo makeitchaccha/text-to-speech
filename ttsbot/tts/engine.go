@@ -22,4 +22,35 @@ type SpeechRequest struct {
 	Text         string
 	LanguageCode string
 	VoiceName    string
+	SpeakingRate float64
+}
+
+type EngineRegistry struct {
+	engines map[string]Engine // identifier -> Engine
+}
+
+func NewEngineRegistry() *EngineRegistry {
+	return &EngineRegistry{
+		engines: make(map[string]Engine),
+	}
+}
+
+func (r *EngineRegistry) Register(identifier string, engine Engine) {
+	if _, exists := r.engines[identifier]; exists {
+		panic("engine already registered: " + identifier)
+	}
+	r.engines[identifier] = engine
+}
+
+func (r *EngineRegistry) Get(identifier string) (Engine, bool) {
+	engine, ok := r.engines[identifier]
+	return engine, ok
+}
+
+func (r *EngineRegistry) MustGet(identifier string) Engine {
+	engine, ok := r.Get(identifier)
+	if !ok {
+		panic("engine not found: " + identifier)
+	}
+	return engine
 }

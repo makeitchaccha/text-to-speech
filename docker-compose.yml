@@ -1,8 +1,6 @@
 services:
   bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/makeitchacchha/text-to-speech:latest
     restart: unless-stopped
     volumes:
       - ./config.toml:/var/lib/config.toml

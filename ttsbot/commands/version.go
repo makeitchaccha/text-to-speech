@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
 
@@ -16,8 +14,15 @@ var version = discord.SlashCommandCreate{
 
 func VersionHandler(b *ttsbot.Bot) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
-		return e.CreateMessage(discord.MessageCreate{
-			Content: fmt.Sprintf("Version: %s\nCommit: %s", b.Version, b.Commit),
-		})
+		return e.CreateMessage(discord.NewMessageCreateBuilder().
+			AddEmbeds(discord.NewEmbedBuilder().
+				SetTitle("About Text-to-Speech Bot").
+				SetDescription("Developed by **Make it! Chaccha**").
+				AddField("Version", b.Version, true).
+				AddField("Commit", b.Commit, true).
+				Build(),
+			).
+			Build(),
+		)
 	}
 }

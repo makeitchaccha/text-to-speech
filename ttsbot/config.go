@@ -17,23 +17,30 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	var cfg Config
-	if _, err = toml.NewDecoder(file).Decode(&cfg); err != nil {
+	md, err := toml.NewDecoder(file).Decode(&cfg)
+	if err != nil {
 		return nil, err
 	}
+
+	if len(md.Undecoded()) > 0 {
+		return nil, fmt.Errorf("config contains undecoded fields: %v", md.Undecoded())
+	}
+
 	return &cfg, nil
 }
 
 type Config struct {
-	Log   LogConfig   `toml:"log"`
-	Bot   BotConfig   `toml:"bot"`
-	TTS   TTSConfig   `toml:"tts"`
-	Redis RedisConfig `toml:"redis"`
+	Log     LogConfig               `toml:"log"`
+	Bot     BotConfig               `toml:"bot"`
+	Presets map[string]PresetConfig `toml:"presets"`
+	Redis   RedisConfig             `toml:"redis"`
 }
 
 type BotConfig struct {
-	DevGuilds []snowflake.ID `toml:"dev_guilds"`
-	Token     string         `toml:"token"`
-	Language  string         `toml:"language"`
+	DevGuilds        []snowflake.ID `toml:"dev_guilds"`
+	Token            string         `toml:"token"`
+	Language         string         `toml:"language"`
+	FallbackPresetID string         `toml:"fallback_preset_id"`
 }
 
 type LogConfig struct {
@@ -42,9 +49,11 @@ type LogConfig struct {
 	AddSource bool       `toml:"add_source"`
 }
 
-type TTSConfig struct {
-	Language  string `toml:"language"`
-	VoiceName string `toml:"voice_name"`
+type PresetConfig struct {
+	Engine       string  `toml:"engine"`
+	Language     string  `toml:"language"`
+	VoiceName    string  `toml:"voice_name"`
+	SpeakingRate float64 `toml:"speaking_rate"`
 }
 
 type RedisConfig struct {

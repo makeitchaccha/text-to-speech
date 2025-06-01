@@ -14,17 +14,36 @@ token = "..."
 # valid languages are "en-US", "ja-JP". 
 # We are welcome for contributions to add more languages -> https://github.com/makeitchaccha/text-to-speech
 default_lang = "en-US"
+# fallback preset name
+# this preset will be used if the user and guild does not have a preset configured.
+# they must be defined in the [presets] section.
+fallback_preset_id = "wavenet-A-woman"
 
 # tts (text-to-speech) configuration
 # the values here are used to configure the text-to-speech.
-# you can find the list of available voices here: https://cloud.google.com/text-to-speech/docs/voices
-[tts]
-# the voice to use for the text-to-speech
-default_lang = "en-US"
-# (optional) valid genders are "male", "female", "neutral"
-# ssml_gender = "..."
-# (optional) the voice name to use for the text-to-speech like "en-US-Standard-A"
-# voice_name = "..."
+# you can find the list of available voices here:
+#  engine = "google" -> https://cloud.google.com/text-to-speech/docs/voices
+[presets.wavenet-A-woman]
+engine = "google"
+language = "ja-JP"
+voice_name = "ja-JP-Wavenet-A"
+speaking_rate = 1.2
+
+[presets.wavenet-C-man]
+engine = "google"
+language = "ja-JP"
+voice_name = "ja-JP-Wavenet-C"
+speaking_rate = 1.2
+
+[presets.wavenet-D-man]
+language = "ja-JP"
+voice_name = "ja-JP-Wavenet-D"
+speaking_rate = 1.2
+
+# [presets.your-own-preset]
+# language = "en-US"
+# voice_name = "en-US-xxxx-A"
+# speaking_rate = 1.0
 
 # optional configuration for redis caching
 # this will save costs for the tts requests to the Google Cloud Text-to-Speech API.

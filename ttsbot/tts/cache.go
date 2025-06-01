@@ -32,6 +32,7 @@ func NewCachedTTSEngine(nextEngine Engine, redisCache *cache.Cache, ttl time.Dur
 	return &CachedTTSEngine{
 		nextEngine: nextEngine,
 		redisCache: redisCache,
+		ttl:        ttl,
 		hash:       hash,
 	}
 }

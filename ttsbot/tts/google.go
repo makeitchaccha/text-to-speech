@@ -8,11 +8,6 @@ import (
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 )
 
-var audioConfig = texttospeechpb.AudioConfig{
-	AudioEncoding:   texttospeechpb.AudioEncoding_MP3,
-	SampleRateHertz: 48000,
-}
-
 var _ Engine = (*GoogleEngine)(nil)
 
 // GoogleEngine is an implementation of the Engine interface for Google Text-to-Speech.
@@ -43,7 +38,11 @@ func (g *GoogleEngine) GenerateSpeech(ctx context.Context, request SpeechRequest
 			LanguageCode: request.LanguageCode,
 			Name:         request.VoiceName,
 		},
-		AudioConfig: &audioConfig,
+		AudioConfig: &texttospeechpb.AudioConfig{
+			AudioEncoding:   texttospeechpb.AudioEncoding_MP3,
+			SampleRateHertz: 48000,
+			SpeakingRate:    request.SpeakingRate,
+		},
 	})
 
 	if err != nil {

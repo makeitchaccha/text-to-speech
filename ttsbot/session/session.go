@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/disgoorg/audio/mp3"
@@ -17,6 +16,7 @@ import (
 	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
 )
 
@@ -30,59 +30,19 @@ const (
 	LeaveResultClose
 )
 
-type Config struct {
-	language  string
-	voiceName string
-}
-
-func (c *Config) apply(opts []ConfigOpt) {
-	for _, opt := range opts {
-		opt(c)
-	}
-}
-
-func (c *Config) validate() error {
-	if c.language == "" {
-		return fmt.Errorf("language must be provided")
-	}
-	if c.voiceName != "" && !strings.HasPrefix(c.voiceName, c.language) {
-		return fmt.Errorf("given voice name %q is not valid for language %q", c.voiceName, c.language)
-	}
-	return nil
-}
-
-type ConfigOpt func(Session *Config)
-
-func WithLanguage(language string) ConfigOpt {
-	return func(Session *Config) {
-		Session.language = language
-	}
-}
-
-func WithVoiceName(voiceName string) ConfigOpt {
-	return func(Session *Config) {
-		Session.voiceName = voiceName
-	}
-}
-
 type Session struct {
-	engine        tts.Engine
-	textChannelID snowflake.ID
-	conn          voice.Conn
-	cfg           Config
+	engineRegistry *tts.EngineRegistry
+	presetResolver preset.PresetResolver
+	textChannelID  snowflake.ID
+	conn           voice.Conn
 }
 
-func New(engine tts.Engine, textChannelID snowflake.ID, conn voice.Conn, opts ...ConfigOpt) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn) (*Session, error) {
 	session := &Session{
-		engine:        engine,
-		textChannelID: textChannelID,
-		conn:          conn,
-	}
-
-	session.cfg.apply(opts)
-
-	if err := session.cfg.validate(); err != nil {
-		return nil, err
+		engineRegistry: engineRegistry,
+		presetResolver: presetResolver,
+		textChannelID:  textChannelID,
+		conn:           conn,
 	}
 
 	return session, nil
@@ -92,14 +52,24 @@ func (s *Session) Close(ctx context.Context) {
 	s.conn.Close(ctx)
 }
 
-func (s *Session) requestTextToSpeech(ctx context.Context, content string) {
+func (s *Session) requestTextToSpeech(ctx context.Context, content string, preset preset.Preset) {
 	slog.Info("Request speech", "content", content)
 	start := time.Now()
-	audioConent, err := s.engine.GenerateSpeech(ctx, tts.SpeechRequest{
+	engine, ok := s.engineRegistry.Get(preset.Engine)
+
+	if !ok {
+		slog.Error("TTS engine not found", slog.String("engine", preset.Engine), slog.String("content", content))
+		return
+	}
+
+	speechRequest := tts.SpeechRequest{
 		Text:         content,
-		LanguageCode: s.cfg.language,
-		VoiceName:    s.cfg.voiceName,
-	})
+		LanguageCode: preset.Language,
+		VoiceName:    preset.VoiceName,
+		SpeakingRate: preset.SpeakingRate,
+	}
+
+	audioConent, err := engine.GenerateSpeech(ctx, speechRequest)
 
 	if err != nil {
 		slog.Error("Failed to synthesize speech", slog.Any("err", err), slog.String("content", content))
@@ -148,7 +118,18 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 	content = message.LimitLength(content, 200)
 	content = message.AddAttachments(content, event.Message.Attachments)
 
-	go s.requestTextToSpeech(context.TODO(), content)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		preset, err := s.presetResolver.Resolve(ctx, *event.GuildID, event.Message.Author.ID)
+		if err != nil {
+			slog.Error("Failed to resolve preset", slog.Any("err", err), slog.String("content", content))
+			return
+		}
+
+		s.requestTextToSpeech(ctx, content, preset)
+	}()
 }
 
 func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
@@ -160,7 +141,16 @@ func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.requestTextToSpeech(ctx, event.Member.EffectiveName()+"がボイスチャンネルに参加しました")
+
+		content := event.Member.EffectiveName() + "がボイスチャンネルに参加しました"
+
+		preset, err := s.presetResolver.Resolve(ctx, event.Member.GuildID, event.Member.User.ID)
+		if err != nil {
+			slog.Error("Failed to resolve preset", slog.Any("err", err), slog.String("content", content))
+			return
+		}
+
+		s.requestTextToSpeech(ctx, content, preset)
 	}()
 }
 
@@ -179,7 +169,16 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.requestTextToSpeech(ctx, event.Member.EffectiveName()+"がボイスチャンネルから退出しました")
+
+		content := event.Member.EffectiveName() + "がボイスチャンネルから退出しました"
+
+		preset, err := s.presetResolver.Resolve(ctx, voiceState.GuildID, voiceState.UserID)
+		if err != nil {
+			slog.Error("Failed to resolve preset", slog.Any("err", err), slog.String("content", content))
+			return
+		}
+
+		s.requestTextToSpeech(ctx, content, preset)
 	}()
 
 	return LeaveResultKeepAlive
@@ -212,13 +211,5 @@ func isVoiceChannelEmpty(cache interface {
 }
 
 func (s *Session) String() string {
-	return fmt.Sprintf("Session(textChannelID: %s, voiceChannelID: %s, language: %s, voiceName: %s)",
-		s.textChannelID, s.conn.ChannelID(), stringOrDefault(s.cfg.language), stringOrDefault(s.cfg.voiceName))
-}
-
-func stringOrDefault(s string) string {
-	if s == "" {
-		return "unspecified"
-	}
-	return s
+	return fmt.Sprintf("Session(textChannelID: %s, voiceChannelID: %s)", s.textChannelID, s.conn.ChannelID())
 }
