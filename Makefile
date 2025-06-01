@@ -14,7 +14,7 @@ vet: fmt
 
 build: vet
 	go mod tidy
-	go build -ldflags="-s -w" -o bin/bot
+	go build -ldflags="-s -w" -o bot
 .PHONY: build
 
 test:

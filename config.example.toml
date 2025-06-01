@@ -45,6 +45,15 @@ speaking_rate = 1.2
 # voice_name = "en-US-xxxx-A"
 # speaking_rate = 1.0
 
+# database configuration
+[database]
+# valid drivers are "sqlite3", "mysql", "postgres"
+driver = "sqlite3"
+# the data source name (dsn) to connect to the database
+dsn = "./text-to-speech.db"
+# dsn = "postgres://user:password@host:port/dbname?sslmode=require" # for postgres
+# dsn = "user:password@tcp(host:port)/dbname" # for mysql
+
 # optional configuration for redis caching
 # this will save costs for the tts requests to the Google Cloud Text-to-Speech API.
 # if enabled, the bot will cache the tts audio files in redis.

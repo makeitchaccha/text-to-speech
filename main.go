@@ -13,8 +13,12 @@ import (
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/handler"
+	"github.com/glebarez/sqlite"
 	"github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/commands"
@@ -78,7 +82,19 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	presetResolver, err := preset.NewPresetResolver(presetRegistry, &preset.MockPresetIDRepository{}, preset.PresetID(cfg.Bot.FallbackPresetID))
+
+	dialector, err := resolveDialector(cfg.Database)
+	if err != nil {
+		slog.Error("Failed to resolve database dialector", slog.Any("err", err))
+		os.Exit(-1)
+	}
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		slog.Error("Failed to connect to database", slog.Any("err", err))
+		os.Exit(-1)
+	}
+
+	presetResolver, err := preset.NewPresetResolver(presetRegistry, preset.NewPresetIDRepository(db), preset.PresetID(cfg.Bot.FallbackPresetID))
 	if err != nil {
 		slog.Error("Failed to create preset resolver", slog.Any("err", err))
 		os.Exit(-1)
@@ -204,4 +220,16 @@ func registerPreset(engineRegistry *tts.EngineRegistry, presetRegistry *preset.P
 	slog.Info("Registered preset", "preset", identifier, "engine", presetConfig.Engine, "language", presetConfig.Language, "voiceName", presetConfig.VoiceName)
 	return nil
 
+}
+
+func resolveDialector(cfg ttsbot.DatabaseConfig) (gorm.Dialector, error) {
+	switch cfg.Driver {
+	case "sqlite3":
+		return sqlite.Open(cfg.Dsn), nil
+	case "mysql":
+		return mysql.Open(cfg.Dsn), nil
+	case "postgres":
+		return postgres.Open(cfg.Dsn), nil
+	}
+	return nil, fmt.Errorf("unknown database driver: %s", cfg.Driver)
 }

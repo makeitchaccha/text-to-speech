@@ -30,10 +30,11 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 type Config struct {
-	Log     LogConfig               `toml:"log"`
-	Bot     BotConfig               `toml:"bot"`
-	Presets map[string]PresetConfig `toml:"presets"`
-	Redis   RedisConfig             `toml:"redis"`
+	Log      LogConfig               `toml:"log"`
+	Bot      BotConfig               `toml:"bot"`
+	Presets  map[string]PresetConfig `toml:"presets"`
+	Database DatabaseConfig          `toml:"database"`
+	Redis    RedisConfig             `toml:"redis"`
 }
 
 type BotConfig struct {
@@ -54,6 +55,11 @@ type PresetConfig struct {
 	Language     string  `toml:"language"`
 	VoiceName    string  `toml:"voice_name"`
 	SpeakingRate float64 `toml:"speaking_rate"`
+}
+
+type DatabaseConfig struct {
+	Driver string `toml:"driver"`
+	Dsn    string `toml:"dsn"`
 }
 
 type RedisConfig struct {
