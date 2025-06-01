@@ -1,4 +1,4 @@
 .idea/
 config.toml
 .env
-build/
+bot
