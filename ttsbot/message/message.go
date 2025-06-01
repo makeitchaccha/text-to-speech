@@ -72,12 +72,22 @@ func ReplaceUrlsWithPlaceholders(content string) string {
 	return urlRegex.ReplaceAllString(content, "[URL]")
 }
 
-func LimitLength(s string, max int) string {
-	runes := []rune(s)
+func LimitContentLength(content string, max int) string {
+	runes := []rune(content)
 	if len(runes) <= max {
-		return s
+		return content
 	}
 	return string(runes[:max])
+}
+
+func AddMemberName(content string, memberName string) string {
+	// If the content is empty, return the member name.
+	if content == "" {
+		return memberName
+	}
+
+	// Otherwise, append the member name to the content.
+	return memberName + ", " + content
 }
 
 func AddAttachments(content string, attachments []discord.Attachment) string {

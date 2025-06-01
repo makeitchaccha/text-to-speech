@@ -16,6 +16,10 @@ const (
 	ScopeUser  Scope = "user"
 )
 
+func (s Scope) String() string {
+	return string(s)
+}
+
 var (
 	ErrNotFound = errors.New("preset ID not found")
 )

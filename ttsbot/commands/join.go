@@ -7,14 +7,21 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
+	"github.com/disgoorg/disgo/rest"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/session"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
 )
 
-var join = discord.SlashCommandCreate{
-	Name:        "join",
-	Description: "Start text-to-speech in text channels",
+func joinCmd(trs localization.TextResources) discord.SlashCommandCreate {
+	return discord.SlashCommandCreate{
+		Name:        "join",
+		Description: "Start text-to-speech in text channels",
+		DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+			return tr.Commands.Join.Description
+		}),
+	}
 }
 
 func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router) handler.CommandHandler {
@@ -30,6 +37,23 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 		// user must be in a voice channel to use this command
 		voiceState, err := e.Client().Rest().GetUserVoiceState(*guildID, e.User().ID)
+		if err, ok := err.(rest.Error); ok {
+			switch err.Code {
+			case 10065:
+				return e.CreateMessage(discord.MessageCreate{
+					Content: "You must be in a voice channel to use this command.",
+				})
+			case 50013:
+				return e.CreateMessage(discord.MessageCreate{
+					Content: "Bot does not have permission to view voice states in this guild.",
+				})
+			}
+			slog.Warn("failed to get voice state", "error", err)
+			return e.CreateMessage(discord.MessageCreate{
+				Content: "failed to get voice state: " + err.Error(),
+			})
+		}
+
 		if err != nil {
 			slog.Warn("failed to get voice state", "error", err)
 			return e.CreateMessage(discord.MessageCreate{

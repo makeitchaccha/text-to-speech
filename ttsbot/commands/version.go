@@ -5,11 +5,17 @@ import (
 	"github.com/disgoorg/disgo/handler"
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 )
 
-var version = discord.SlashCommandCreate{
-	Name:        "version",
-	Description: "version command",
+func versionCmd(trs localization.TextResources) discord.SlashCommandCreate {
+	return discord.SlashCommandCreate{
+		Name:        "version",
+		Description: "Show bot version information",
+		DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+			return tr.Commands.Version.Description
+		}),
+	}
 }
 
 func VersionHandler(b *ttsbot.Bot) handler.CommandHandler {

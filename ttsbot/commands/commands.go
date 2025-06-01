@@ -1,8 +1,14 @@
 package commands
 
-import "github.com/disgoorg/disgo/discord"
+import (
+	"github.com/disgoorg/disgo/discord"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+)
 
-var Commands = []discord.ApplicationCommandCreate{
-	join,
-	version,
+func Commands(trs localization.TextResources) []discord.ApplicationCommandCreate {
+	return []discord.ApplicationCommandCreate{
+		joinCmd(trs),
+		presetCmd(trs),
+		versionCmd(trs),
+	}
 }

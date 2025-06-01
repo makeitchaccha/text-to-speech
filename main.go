@@ -22,6 +22,7 @@ import (
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/commands"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/session"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
@@ -33,6 +34,12 @@ var (
 )
 
 func main() {
+	trs, err := localization.LoadTextResources("./locales/text/")
+	if err != nil {
+		slog.Error("Failed to load text resources", slog.Any("err", err))
+		os.Exit(-1)
+	}
+
 	shouldSyncCommands := flag.Bool("sync-commands", false, "Whether to sync commands to discord")
 	path := flag.String("config", "config.toml", "path to config")
 	flag.Parse()
@@ -106,6 +113,7 @@ func main() {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)
 	}
+	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db)))
 	h.Command("/version", commands.VersionHandler(b))
 
 	if err = b.SetupBot(h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()); err != nil {
@@ -121,7 +129,7 @@ func main() {
 
 	if *shouldSyncCommands {
 		slog.Info("Syncing commands", slog.Any("guild_ids", cfg.Bot.DevGuilds))
-		if err = handler.SyncCommands(b.Client, commands.Commands, cfg.Bot.DevGuilds); err != nil {
+		if err = handler.SyncCommands(b.Client, commands.Commands(trs), cfg.Bot.DevGuilds); err != nil {
 			slog.Error("Failed to sync commands", slog.Any("err", err))
 		}
 	}

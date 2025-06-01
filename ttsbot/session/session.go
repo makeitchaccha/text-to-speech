@@ -112,10 +112,17 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 
 	slog.Debug("Received message for TTS", "messageID", event.Message.ID, "content", event.Message.Content)
 
+	member, err := event.Client().Rest().GetMember(*event.GuildID, event.Message.Author.ID)
+	if err != nil {
+		slog.Error("Failed to get member for message author", slog.Any("err", err), slog.String("userID", event.Message.Author.ID.String()))
+		return
+	}
+
 	// make the content safe and ready for TTS.
 	content := event.Message.Content
 	content = message.ConvertMarkdownToPlainText(content)
-	content = message.LimitLength(content, 200)
+	content = message.LimitContentLength(content, 300)
+	content = message.AddMemberName(content, member.EffectiveName())
 	content = message.AddAttachments(content, event.Message.Attachments)
 
 	go func() {
@@ -165,7 +172,6 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 		return LeaveResultClose
 	}
 
-	// TODO: remove hardcoded message
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
