@@ -16,6 +16,7 @@ type Preset struct {
 
 type PresetRegistry struct {
 	presets map[PresetID]Preset // identifier -> Preset
+	lists   []Preset
 }
 
 func NewPresetRegistry() *PresetRegistry {
@@ -29,6 +30,7 @@ func (r *PresetRegistry) Register(preset Preset) error {
 		return fmt.Errorf("preset already registered: %s", preset.Identifier)
 	}
 	r.presets[preset.Identifier] = preset
+	r.lists = append(r.lists, preset)
 
 	return nil
 }
@@ -36,4 +38,8 @@ func (r *PresetRegistry) Register(preset Preset) error {
 func (r *PresetRegistry) Get(identifier PresetID) (Preset, bool) {
 	preset, ok := r.presets[identifier]
 	return preset, ok
+}
+
+func (r *PresetRegistry) List() []Preset {
+	return r.lists
 }
