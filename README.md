@@ -24,19 +24,8 @@ It currently supports the following engines:
 4. Create a service account in the Google Cloud Console and download the JSON key file.
 5. Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the path of the JSON key file.
 6. Install the bot by inviting it to your server using the OAuth2 URL generated in the Discord Developer Portal.
-7. fill the `config.toml` file with your bot token and any other configuration options you want to set. The `dev_guilds` field can be left empty to sync commands globally or filled with specific guild IDs to sync commands only to those guilds.
-
-    Example `config.toml`:
-    ```toml
-    [log]
-    level = "info"
-    format = "text"
-    add_source = true
-
-    [bot]
-    dev_guilds = []
-    token = "YOUR_BOT_TOKEN_HERE"
-    ```
+7. Copy the example configuration file `config.example.toml` to `config.toml` and fill in the required fields:
+   - `discord.token`: Your Discord bot token.
 
 8. Run the bot with the command:
    ```bash
