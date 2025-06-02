@@ -151,12 +151,18 @@ func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, pres
 	}
 
 	select {
-	case s.taskQueue <- task:
-		slog.Debug("Enqueued speech task", "segments", segments, "preset", preset.Identifier)
 	case <-ctx.Done():
 		slog.Warn("Context cancelled, not enqueuing task", "segments", segments, "preset", preset.Identifier)
+		return
 	case <-s.stopWorker:
 		slog.Warn("Session worker stopped, not enqueuing task", "segments", segments, "preset", preset.Identifier)
+		return
+	default:
+	}
+
+	select {
+	case s.taskQueue <- task:
+		slog.Debug("Enqueued speech task", "segments", segments, "preset", preset.Identifier)
 	default:
 		slog.Warn("Task queue is full, dropping task", "segments", segments, "preset", preset.Identifier)
 	}
@@ -190,7 +196,8 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 	}
 
 	go func() {
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		preset, err := s.presetResolver.Resolve(ctx, *event.GuildID, event.Message.Author.ID)
 		if err != nil {
 			slog.Error("Failed to resolve preset", slog.Any("err", err), slog.String("content", content))
