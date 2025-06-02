@@ -60,7 +60,7 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 
 func (s *Session) Close(ctx context.Context) {
 	s.conn.Close(ctx)
-	s.stopWorker <- struct{}{}
+	close(s.stopWorker)
 	close(s.taskQueue)
 }
 
