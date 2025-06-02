@@ -117,14 +117,14 @@ func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.
 
 		groupName := data.SubCommandGroupName
 		if groupName != nil {
-			return processPresetGroupCommand(e, presetRegistry, presetResolver, presetIDRepository, *groupName)
+			return processPresetGroupCommand(e, presetRegistry, presetIDRepository, *groupName)
 		}
 
 		return processPresetCommand(e, presetRegistry)
 	}
 }
 
-func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetResolver preset.PresetResolver, presetIDRepository preset.PresetIDRepository, groupName string) error {
+func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetIDRepository preset.PresetIDRepository, groupName string) error {
 	var scope preset.Scope
 	var id snowflake.ID
 	switch groupName {

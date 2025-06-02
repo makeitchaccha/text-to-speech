@@ -37,8 +37,8 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 		// user must be in a voice channel to use this command
 		voiceState, err := e.Client().Rest().GetUserVoiceState(*guildID, e.User().ID)
-		var restErr *rest.Error
-		if ok := errors.As(err, restErr); ok {
+		var restErr rest.Error
+		if ok := errors.As(err, &restErr); ok {
 			switch restErr.Code {
 			case 10065:
 				return e.CreateMessage(discord.MessageCreate{
