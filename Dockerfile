@@ -13,6 +13,12 @@ ARG TARGETARCH
 ARG VERSION=dev
 ARG COMMIT=unknown
 
+# Install necessary build dependencies
+RUN apk add --no-cache pkgconfig \
+    opus-dev \
+    libsamplerate \
+    mpg123
+
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
     CGO_ENABLED=0 \
@@ -21,6 +27,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}'" -o bot github.com/makeitchaccha/text-to-speech
 
 FROM alpine
+
+RUN apk add --no-cache \
+    ca-certificates \
+    opus \
+    libsamplerate \
+    mpg123
 
 COPY --from=build /build/bot /bin/bot
 
