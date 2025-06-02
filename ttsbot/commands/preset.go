@@ -199,7 +199,6 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 	return e.CreateMessage(discord.NewMessageCreateBuilder().
 		SetContent("This command is not implemented yet.").
 		Build())
-
 }
 
 func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry) error {
