@@ -21,7 +21,7 @@ RUN apk add --no-cache pkgconfig \
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    CGO_ENABLED=0 \
+    CGO_ENABLED=1 \
     GOOS=$TARGETOS \
     GOARCH=$TARGETARCH \
     go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}'" -o bot github.com/makeitchaccha/text-to-speech
