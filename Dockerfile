@@ -16,6 +16,7 @@ ARG COMMIT=unknown
 # Install necessary build dependencies
 RUN apk add --no-cache pkgconfig \
     gcc \
+    musl-dev \
     opus-dev \
     libsamplerate \
     mpg123
