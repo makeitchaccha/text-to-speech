@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/disgoorg/disgo/discord"
 )
 
 var (
@@ -78,14 +76,4 @@ func LimitContentLength(content string, max int) string {
 		return content
 	}
 	return string(runes[:max])
-}
-
-func AddAttachments(content string, attachments []discord.Attachment) string {
-	// If there are no attachments, return the content as is.
-	if len(attachments) == 0 {
-		return content
-	}
-
-	numberOfAttachments := len(attachments)
-	return content + " " + fmt.Sprintf("%d attachments:", numberOfAttachments)
 }
