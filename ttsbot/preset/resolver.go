@@ -74,7 +74,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 func (r *presetResolverImpl) ResolveGuildPreset(ctx context.Context, guildID snowflake.ID) (Preset, error) {
 	presetID, err := r.repository.Find(ctx, ScopeGuild, guildID)
 	if err != nil {
-		if err != ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			// just log the error to notify about the issue, but use the fallback preset ID
 			slog.Warn("failed to resolve guild preset ID", "guildID", guildID, "error", err)
 		}
