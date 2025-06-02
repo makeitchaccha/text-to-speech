@@ -57,7 +57,7 @@ type TextResource struct {
 }
 
 func LoadTextResources(directory string) (TextResources, error) {
-	resources := make(TextResources)
+	trs := make(TextResources)
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read text resources directory: %w", err)
@@ -100,11 +100,11 @@ func LoadTextResources(directory string) (TextResources, error) {
 			slog.Warn("text resource file has invalid locale", "file", filePath, "locale", locale)
 			return nil, fmt.Errorf("text resource file %s has invalid locale: %s", filePath, locale)
 		}
-		resources[discordLocale] = resource
+		trs[discordLocale] = resource
 		slog.Info("Loaded text resource", "locale", locale, "file", filePath)
 	}
 
-	return nil, nil
+	return trs, nil
 }
 
 func (tr TextResources) Localizations(value func(textResource TextResource) string) map[discord.Locale]string {
