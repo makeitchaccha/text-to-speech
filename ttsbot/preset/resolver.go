@@ -2,6 +2,7 @@ package preset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -35,7 +36,7 @@ type presetResolverImpl struct {
 func (r *presetResolverImpl) Resolve(ctx context.Context, guildID, userID snowflake.ID) (Preset, error) {
 	presetID, err := r.resolveID(ctx, guildID, userID)
 	if err != nil {
-		if err != ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			// just log the error to notify about the issue, but use the fallback preset ID
 			slog.Warn("failed to resolve preset ID", "guildID", guildID, "userID", userID, "error", err)
 		}
@@ -55,7 +56,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 	if err == nil {
 		return presetID, nil
 	}
-	if err != ErrNotFound {
+	if errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 
@@ -63,7 +64,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 	if err == nil {
 		return presetID, nil
 	}
-	if err != ErrNotFound {
+	if errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 

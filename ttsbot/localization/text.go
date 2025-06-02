@@ -57,7 +57,6 @@ type TextResource struct {
 }
 
 func LoadTextResources(directory string) (TextResources, error) {
-
 	resources := make(TextResources)
 	entries, err := os.ReadDir(directory)
 	if err != nil {

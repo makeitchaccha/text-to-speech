@@ -83,7 +83,6 @@ func (m *Router) CreateVoiceStateHandler() bot.EventListener {
 			m.handleLeaveVoiceChannel(event)
 			m.handleJoinVoiceChannel(event)
 		}
-
 	})
 }
 

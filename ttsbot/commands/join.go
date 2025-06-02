@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -26,7 +27,6 @@ func joinCmd(trs localization.TextResources) discord.SlashCommandCreate {
 
 func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
-
 		guildID := e.GuildID()
 
 		if guildID == nil {
@@ -37,8 +37,9 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 		// user must be in a voice channel to use this command
 		voiceState, err := e.Client().Rest().GetUserVoiceState(*guildID, e.User().ID)
-		if err, ok := err.(rest.Error); ok {
-			switch err.Code {
+		var restErr *rest.Error
+		if ok := errors.As(err, restErr); ok {
+			switch restErr.Code {
 			case 10065:
 				return e.CreateMessage(discord.MessageCreate{
 					Content: "You must be in a voice channel to use this command.",

@@ -227,7 +227,6 @@ func registerPreset(engineRegistry *tts.EngineRegistry, presetRegistry *preset.P
 
 	slog.Info("Registered preset", "preset", identifier, "engine", presetConfig.Engine, "language", presetConfig.Language, "voiceName", presetConfig.VoiceName)
 	return nil
-
 }
 
 func resolveDialector(cfg ttsbot.DatabaseConfig) (gorm.Dialector, error) {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -171,7 +172,7 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 	case "show":
 		presetID, err := presetIDRepository.Find(ctx, scope, id)
 		if err != nil {
-			if err == preset.ErrNotFound {
+			if errors.Is(err, preset.ErrNotFound) {
 				return e.CreateMessage(discord.NewMessageCreateBuilder().
 					SetContentf("No preset set for %s", scope).
 					Build())
@@ -202,7 +203,6 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 }
 
 func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry) error {
-
 	data := e.SlashCommandInteractionData()
 	switch *data.SubCommandName {
 	case "list":

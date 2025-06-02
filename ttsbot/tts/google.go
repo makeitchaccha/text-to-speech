@@ -26,7 +26,6 @@ func (g *GoogleEngine) Name() string {
 }
 
 func (g *GoogleEngine) GenerateSpeech(ctx context.Context, request SpeechRequest) ([]byte, error) {
-
 	slog.Info("Synthesize speech", slog.String("text", request.Text))
 	resp, err := g.client.SynthesizeSpeech(ctx, &texttospeechpb.SynthesizeSpeechRequest{
 		Input: &texttospeechpb.SynthesisInput{
