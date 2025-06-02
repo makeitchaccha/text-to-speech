@@ -19,7 +19,7 @@ RUN apk add --no-cache pkgconfig \
     musl-dev \
     opus-dev \
     libsamplerate \
-    mpg123
+    mpg123-dev
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
