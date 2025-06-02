@@ -50,10 +50,10 @@ The bot template is licensed under the [Apache License 2.0][5].
 [0]: https://goreportcard.com/badge/github.com/makeitchaccha/text-to-speech
 [1]: https://goreportcard.com/report/github.com/makeitchaccha/text-to-speech
 
-[2]: https://img.shields.io/github/go-mod/go-version/disgoorg/bot-template
+[2]: https://img.shields.io/github/go-mod/go-version/makeitchaccha/text-to-speech
 [3]: https://golang.org/doc/devel/release.html
 
-[4]: https://img.shields.io/github/license/disgoorg/bot-template
+[4]: https://img.shields.io/github/license/makeitchaccha/text-to-speech
 [5]: LICENSE
 
 [6]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/docker.yml/badge.svg
