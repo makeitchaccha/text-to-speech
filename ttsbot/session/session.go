@@ -10,6 +10,7 @@ import (
 	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
@@ -286,7 +287,7 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 	// notify someone left the voice channel
 	slog.Info("User left voice channel", "userID", voiceState.UserID, "guildID", voiceState.GuildID, "channelID", *voiceState.ChannelID)
 
-	if isVoiceChannelEmpty(event.Client().Caches(), voiceState.GuildID, *voiceState.ChannelID, voiceState.UserID) {
+	if isVoiceChannelEmpty(event.Client().Rest(), event.Client().Caches(), voiceState.GuildID, *voiceState.ChannelID, voiceState.UserID) {
 		slog.Info("Voice channel is empty, closing session", "guildID", voiceState.GuildID, "channelID", *voiceState.ChannelID)
 		return LeaveResultClose
 	}
@@ -312,10 +313,13 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 	return LeaveResultKeepAlive
 }
 
-func isVoiceChannelEmpty(cache interface {
-	cache.VoiceStateCache
-	cache.MemberCache
-}, guildID, channelID, ignoredUserID snowflake.ID) bool {
+func isVoiceChannelEmpty(
+	client rest.Users,
+	cache interface {
+		cache.VoiceStateCache
+		cache.MemberCache
+	}, guildID, channelID, ignoredUserID snowflake.ID,
+) bool {
 	empty := true
 	cache.VoiceStatesForEach(guildID, func(voiceState discord.VoiceState) {
 		// ignore voice states of the user who left the voice channel
@@ -324,8 +328,15 @@ func isVoiceChannelEmpty(cache interface {
 		}
 
 		// ignore bot
-		member, ok := cache.Member(guildID, voiceState.UserID)
-		if ok && member.User.Bot {
+
+		user, ok := fetchUser(guildID, voiceState.UserID, client, cache)
+		if !ok {
+			slog.Warn("Failed to fetch user for voice state", "userID", voiceState.UserID, "guildID", guildID)
+			return
+		}
+
+		if user.Bot {
+			slog.Debug("Ignoring bot in voice channel", "userID", voiceState.UserID, "guildID", guildID)
 			return
 		}
 
@@ -336,6 +347,20 @@ func isVoiceChannelEmpty(cache interface {
 	})
 
 	return empty
+}
+
+func fetchUser(guildID, userID snowflake.ID, client rest.Users, cache cache.MemberCache) (*discord.User, bool) {
+	member, ok := cache.Member(guildID, userID)
+	if ok {
+		return &member.User, true
+	}
+
+	user, err := client.GetUser(userID)
+	if err == nil {
+		return user, true
+	}
+
+	return nil, false
 }
 
 func (s *Session) String() string {
