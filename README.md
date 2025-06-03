@@ -41,7 +41,7 @@ See the [config.toml.example][14] file for an example configuration file. The co
 
 ## License
 
-The bot template is licensed under the [Apache License 2.0][5].
+The text-to-speech bot is licensed under the [Apache License 2.0][5].
 
 
 [0]: https://goreportcard.com/badge/github.com/makeitchaccha/text-to-speech
