@@ -3,6 +3,7 @@
 [![License][4]][5]
 [![Docker][6]][7]
 [![Test][8]][9]
+[![Ask DeepWiki][10]][11]
 
 # text-to-speech bot
 
@@ -14,11 +15,11 @@ CLI Flags:
 
 This bot is under active development and is not yet feature complete.
 It currently supports the following engines:
-- [Google Cloud Text-to-Speech API][10].
+- [Google Cloud Text-to-Speech API][12].
 
 ## Usage
 
-1. Create a Discord application at the [Discord Developer Portal][11].
+1. Create a Discord application at the [Discord Developer Portal][13].
 2. Create a bot user for the application.
 3. Copy the bot token and add it to the configuration file.
 4. Create a service account in the Google Cloud Console and download the JSON key file.
@@ -36,7 +37,7 @@ It currently supports the following engines:
 
 ## Configuration
 
-See the [config.toml.example][12] file for an example configuration file. The configuration file is in TOML format and can be customized to your needs.
+See the [config.toml.example][14] file for an example configuration file. The configuration file is in TOML format and can be customized to your needs.
 
 ## License
 
@@ -58,8 +59,11 @@ The bot template is licensed under the [Apache License 2.0][5].
 [8]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/test.yml/badge.svg
 [9]: https://github.com/makeitchaccha/text-to-speech/actions/workflows/test.yml
 
-[10]: https://cloud.google.com/text-to-speech
+[10]: https://deepwiki.com/badge.svg
+[11]: https://deepwiki.com/makeitchaccha/text-to-speech
 
-[11]: https://discord.com/developers/applications
+[12]: https://cloud.google.com/text-to-speech
 
-[12]: /config.example.toml
+[13]: https://discord.com/developers/applications
+
+[14]: /config.example.toml
