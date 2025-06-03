@@ -29,6 +29,26 @@ const (
 type SpeechTask struct {
 	Preset   preset.Preset
 	Segments []string
+
+	ContainsName bool
+	Speaker      snowflake.ID
+	SpeakerName  string
+}
+
+func (t *SpeechTask) apply(opts []taskOption) {
+	for _, opt := range opts {
+		opt(t)
+	}
+}
+
+type taskOption func(*SpeechTask)
+
+func withSpeaker(speakerID snowflake.ID, speakerName string) taskOption {
+	return func(task *SpeechTask) {
+		task.ContainsName = true
+		task.Speaker = speakerID
+		task.SpeakerName = speakerName
+	}
 }
 
 type Session struct {
@@ -68,6 +88,7 @@ func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
 	trackClose := make(chan struct{})
 	audioQueue := make(chan []byte, 10)
 	trackPlayer, err := newTrackPlayer(s.conn, audioQueue, trackClose)
+	lastSpeakerID := snowflake.ID(0)
 	s.conn.SetOpusFrameProvider(trackPlayer)
 	if err != nil {
 		slog.Error("Failed to create track player", slog.Any("err", err))
@@ -81,6 +102,10 @@ func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
 			return
 
 		case task := <-queue:
+			if task.ContainsName && task.Speaker != lastSpeakerID {
+				task.Segments = append([]string{task.SpeakerName}, task.Segments...)
+				lastSpeakerID = task.Speaker
+			}
 			s.processTask(task, audioQueue)
 		}
 	}
@@ -139,7 +164,7 @@ func (s *Session) performTextToSpeech(ctx context.Context, content string, prese
 	return audioConent, nil
 }
 
-func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, preset preset.Preset) {
+func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, preset preset.Preset, opt ...taskOption) {
 	if len(segments) == 0 {
 		slog.Warn("No segments to process for TTS")
 		return
@@ -149,6 +174,8 @@ func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, pres
 		Preset:   preset,
 		Segments: segments,
 	}
+
+	task.apply(opt)
 
 	select {
 	case <-ctx.Done():
@@ -189,7 +216,6 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 	content = message.LimitContentLength(content, 300)
 
 	segments := make([]string, 0)
-	segments = append(segments, member.EffectiveName())
 	segments = append(segments, content)
 	if nAttachment := len(event.Message.Attachments); nAttachment > 0 {
 		segments = append(segments, fmt.Sprintf("%d attachments", nAttachment))
@@ -204,7 +230,7 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 			return
 		}
 
-		s.enqueueSpeechTask(ctx, segments, preset)
+		s.enqueueSpeechTask(ctx, segments, preset, withSpeaker(event.Message.Author.ID, member.EffectiveName()))
 		slog.Info("Enqueued speech task", "content", content, "preset", preset.Identifier)
 	}()
 }
