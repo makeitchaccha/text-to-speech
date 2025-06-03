@@ -4,12 +4,23 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/disgoorg/disgo/discord"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 var (
 	urlRegex      = regexp.MustCompile(`https?://[^\s]+`)
 	headingsRegex = regexp.MustCompile(`^ *#{1,3}`)
 )
+
+func ReplaceUserMentions(content string, mentions map[snowflake.ID]string) string {
+	for id, name := range mentions {
+		// Replace mentions like <@123456789012345678> with the placeholder
+		content = strings.ReplaceAll(content, discord.UserMention(id), "@"+name)
+	}
+	return content
+}
 
 func ConvertMarkdownToPlainText(content string) string {
 	lines := strings.Split(content, "\n")

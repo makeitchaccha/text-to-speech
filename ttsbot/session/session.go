@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
@@ -209,8 +210,11 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 		return
 	}
 
+	mentions := createIdToNameMap(event.Client(), *event.GuildID, event.Message.Mentions)
+
 	// make the content safe and ready for TTS.
 	content := event.Message.Content
+	content = message.ReplaceUserMentions(content, mentions)
 	content = message.ReplaceUrlsWithPlaceholders(content)
 	content = message.ConvertMarkdownToPlainText(content)
 	content = message.LimitContentLength(content, 300)
@@ -233,6 +237,22 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 		s.enqueueSpeechTask(ctx, segments, preset, withSpeaker(event.Message.Author.ID, member.EffectiveName()))
 		slog.Info("Enqueued speech task", "content", content, "preset", preset.Identifier)
 	}()
+}
+
+func createIdToNameMap(client bot.Client, guildID snowflake.ID, users []discord.User) map[snowflake.ID]string {
+	mentions := make(map[snowflake.ID]string, len(users))
+	for _, user := range users {
+		// we should fetch meber information to get the effective name
+		// but to avoid unnecessary API calls, we can use the member cache.
+		member, ok := client.Caches().Member(guildID, user.ID)
+		if !ok {
+			slog.Warn("Member not found in cache for mention", "mentionID", user.ID)
+			mentions[user.ID] = user.EffectiveName()
+		} else {
+			mentions[user.ID] = member.EffectiveName()
+		}
+	}
+	return mentions
 }
 
 func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
