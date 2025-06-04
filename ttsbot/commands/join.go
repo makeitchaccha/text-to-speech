@@ -15,7 +15,7 @@ import (
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
 )
 
-func joinCmd(trs localization.TextResources) discord.SlashCommandCreate {
+func joinCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "join",
 		Description: "Start text-to-speech in text channels",

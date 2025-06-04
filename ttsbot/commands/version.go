@@ -8,7 +8,7 @@ import (
 	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 )
 
-func versionCmd(trs localization.TextResources) discord.SlashCommandCreate {
+func versionCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "version",
 		Description: "Show bot version information",

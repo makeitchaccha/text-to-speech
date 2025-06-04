@@ -10,10 +10,26 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-func load[S ~string, T any, U ~map[S]T](directory string, resources U) error {
+type genericResources[S ~string, T any] map[S]T
+
+func (r genericResources[S, T]) Get(locale S) (T, bool) {
+	resource, ok := r[locale]
+	return resource, ok
+}
+
+func (r genericResources[S, T]) Localizations(value func(resource T) string) map[S]string {
+	localizations := make(map[S]string, len(r))
+	for locale, resource := range r {
+		localizations[locale] = value(resource)
+	}
+	return localizations
+}
+
+func load[S ~string, T any, U genericResources[S, T]](directory string, resources U) error {
+	var resource T
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return fmt.Errorf("failed to read text resources directory: %w", err)
+		return fmt.Errorf("failed to read %T resources directory: %w", resource, err)
 	}
 
 	for _, entry := range entries {
@@ -33,23 +49,22 @@ func load[S ~string, T any, U ~map[S]T](directory string, resources U) error {
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			return fmt.Errorf("failed to open text resource file %s: %w", filePath, err)
+			return fmt.Errorf("failed to open %T resource file %s: %w", resource, filePath, err)
 		}
 		defer file.Close()
 
-		var resource T
 		metadata, err := toml.NewDecoder(file).Decode(&resource)
 		if err != nil {
-			return fmt.Errorf("failed to decode text resource file %s: %w", filePath, err)
+			return fmt.Errorf("failed to decode %T resource file %s: %w", resource, filePath, err)
 		}
 
 		if len(metadata.Undecoded()) > 0 {
-			slog.Warn("text resource file contains undecoded fields", "file", filePath, "fields", metadata.Undecoded())
-			return fmt.Errorf("text resource file %s contains undecoded fields: %v", filePath, metadata.Undecoded())
+			slog.Warn("The resource file contains undecoded fields", "file", filePath, "fields", metadata.Undecoded())
+			return fmt.Errorf("%T resource file %s contains undecoded fields: %v", resource, filePath, metadata.Undecoded())
 		}
 
 		resources[S(locale)] = resource
-		slog.Info("Loaded text resource", "locale", locale, "file", filePath)
+		slog.Info("Loaded the resource", "locale", locale, "file", filePath)
 	}
 
 	return nil

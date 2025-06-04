@@ -14,7 +14,7 @@ import (
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 )
 
-func presetCmd(trs localization.TextResources) discord.SlashCommandCreate {
+func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "preset",
 		Description: "Manage presets for text-to-speech",

@@ -1,12 +1,12 @@
 package localization
 
 import (
-	"fmt"
-
 	"github.com/disgoorg/disgo/discord"
 )
 
-type TextResources map[discord.Locale]TextResource
+type TextResources struct {
+	genericResources[discord.Locale, TextResource]
+}
 
 type TextResource struct {
 	Commands struct {
@@ -51,38 +51,14 @@ type TextResource struct {
 	} `toml:"commands"`
 }
 
-func LoadTextResources(directory string) (TextResources, error) {
-	resources := make(TextResources)
+func LoadTextResources(directory string) (*TextResources, error) {
+	resources := &TextResources{
+		genericResources: make(genericResources[discord.Locale, TextResource]),
+	}
 
-	if err := load(directory, resources); err != nil {
+	if err := load(directory, resources.genericResources); err != nil {
 		return nil, err
 	}
 
-	// validate locales with discord.Locale
-	for locale := range resources {
-		discordLocale := discord.Locale(locale)
-		if discordLocale.String() == discord.LocaleUnknown.String() {
-			return nil, fmt.Errorf("text resource file has invalid locale: %s", locale)
-		}
-	}
-
 	return resources, nil
-}
-
-func (tr TextResources) Localizations(value func(textResource TextResource) string) map[discord.Locale]string {
-	localizations := make(map[discord.Locale]string)
-
-	for locale, resource := range tr {
-		localizations[locale] = value(resource)
-	}
-
-	return localizations
-}
-
-func (tr TextResources) Get(locale discord.Locale) TextResource {
-	resource, ok := tr[locale]
-	if !ok {
-		return tr[discord.LocaleEnglishUS] // Fallback to English US if the requested locale is not found
-	}
-	return resource
 }
