@@ -11,6 +11,7 @@ import (
 	"github.com/disgoorg/disgo/handler"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 )
 
@@ -120,7 +121,7 @@ func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.
 			return processPresetGroupCommand(e, presetRegistry, presetIDRepository, *groupName, trs)
 		}
 
-		return processPresetCommand(e, presetRegistry)
+		return processPresetCommand(e, presetRegistry, trs)
 	}
 }
 
@@ -147,10 +148,8 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 	default:
 		slog.Error("unknown preset group", "group", groupName)
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			AddEmbeds(discord.NewEmbedBuilder().
-				SetTitle("Error").
+			AddEmbeds(message.BuildErrorEmbed(tr).
 				SetDescription("Developer Error: Unsupported subcommand").
-				SetColor(0xed5555).
 				Build()).
 			Build())
 	}
@@ -160,38 +159,64 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 	defer cancel()
 	switch *data.SubCommandName {
 	case "set":
-		err := presetIDRepository.Save(ctx, scope, id, preset.PresetID(data.String("name")))
+		preset, ok := presetRegistry.Get(preset.PresetID(data.String("name")))
+		if !ok {
+			return e.CreateMessage(discord.NewMessageCreateBuilder().
+				AddEmbeds(message.BuildErrorEmbed(tr).
+					SetDescriptionf(tr.Commands.Preset.Generic.Set.ErrorNotFound, data.String("name")).
+					Build()).
+				Build())
+		}
+
+		err := presetIDRepository.Save(ctx, scope, id, preset.Identifier)
 		if err != nil {
 			slog.Error("failed to save preset ID", "error", err)
 			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				SetContentf("Failed to set preset for %s: %v", scope, err).
+				AddEmbeds(message.BuildErrorEmbed(tr).
+					SetDescriptionf(tr.Commands.Preset.Generic.Set.ErrorSave, generic, err).
+					Build()).
 				Build())
 		}
+
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetContentf("Preset for %s set to `%s`", scope, data.String("name")).
-			Build())
+			AddEmbeds(message.BuildSuccessEmbed(tr).
+				SetDescriptionf(tr.Commands.Preset.Generic.Set.Success, generic, preset.Identifier).
+				Build(),
+			).Build(),
+		)
 
 	case "unset":
 		err := presetIDRepository.Delete(ctx, scope, id)
 		if err != nil {
 			slog.Error("failed to delete preset ID", "error", err)
 			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				SetContentf("Failed to unset preset for %s: %v", scope, err).
+				AddEmbeds(message.BuildErrorEmbed(tr).
+					SetDescription(tr.Commands.Preset.Generic.Unset.ErrorDelete).
+					Build()).
 				Build())
 		}
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetContentf(tr.Commands.Preset.Generic.Show.None, generic).
+			AddEmbeds(message.BuildSuccessEmbed(tr).
+				SetDescriptionf(tr.Commands.Preset.Generic.Unset.Success, generic).
+				Build()).
 			Build())
+
 	case "show":
 		presetID, err := presetIDRepository.Find(ctx, scope, id)
 		if err != nil {
 			if errors.Is(err, preset.ErrNotFound) {
 				return e.CreateMessage(discord.NewMessageCreateBuilder().
+					AddEmbeds(message.BuildErrorEmbed(tr).
+						SetDescriptionf(tr.Commands.Preset.Generic.Show.None, generic).
+						Build(),
+					).
 					Build())
 			}
 			slog.Error("failed to find preset ID", "error", err)
 			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				SetContentf("Failed to show preset for %s: %v", scope, err).
+				AddEmbeds(message.BuildErrorEmbed(tr).
+					SetDescription(tr.Commands.Preset.Generic.Show.ErrorFetch).
+					Build()).
 				Build())
 		}
 
@@ -199,58 +224,43 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 		if !ok {
 			slog.Error("failed to resolve preset", "error", err)
 			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				SetContentf("Failed to resolve preset for %s: %v", scope, err).
+				AddEmbeds(message.BuildErrorEmbed(tr).
+					SetDescription(tr.Commands.Preset.Generic.Show.ErrorInvalid).
+					Build()).
 				Build())
 		}
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			AddEmbeds(buildPresetEmbed(preset, tr)).
+			AddEmbeds(
+				message.BuildPresetEmbed(preset, tr).
+					SetDescriptionf(tr.Commands.Preset.Generic.Show.Current, generic).
+					Build(),
+			).
 			Build())
 	}
 
 	return e.CreateMessage(discord.NewMessageCreateBuilder().
-		SetContent("This command is not implemented yet.").
+		SetContent("Developer Error: Unsupported subcommand").
 		Build())
 }
 
-func buildPresetEmbed(preset preset.Preset, trs localization.TextResource) discord.Embed {
-	embedBuilder := discord.NewEmbedBuilder().
-		SetTitle(trs.Generic.Preset.Self).
-		AddField(trs.Generic.Preset.Name, string(preset.Identifier), true).
-		AddField(trs.Generic.Preset.Engine, preset.Engine, true).
-		AddField(trs.Generic.Preset.Language, preset.Language, true).
-		AddField(trs.Generic.Preset.VoiceName, preset.VoiceName, true)
-
-	if preset.SpeakingRate != 0 {
-		embedBuilder.AddField("Speaking Rate", fmt.Sprintf("%.2f", preset.SpeakingRate), true)
-	}
-
-	return embedBuilder.Build()
-}
-
-func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry) error {
+func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, trs *localization.TextResources) error {
 	data := e.SlashCommandInteractionData()
+	tr, ok := trs.Get(e.Locale())
+	if !ok {
+		slog.Error("failed to get localization for locale", "locale", e.Locale())
+		tr = trs.GetFallback()
+	}
 	switch *data.SubCommandName {
 	case "list":
 		presets := presetRegistry.List()
 
-		embedBuilder := discord.NewEmbedBuilder().
-			SetTitle("Presets List")
-
-		for _, preset := range presets {
-			base := fmt.Sprintf("Engine: %s\nLanguage: %s\nVoice: %s\n", preset.Engine, preset.Language, preset.VoiceName)
-			if preset.SpeakingRate != 0 {
-				base += fmt.Sprintf("Speaking Rate: %.2f\n", preset.SpeakingRate)
-			}
-			embedBuilder.AddField(string(preset.Identifier), base, true)
-		}
-
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetEmbeds(embedBuilder.Build()).
+			SetEmbeds(message.BuildPresetListEmbed(presets, tr).Build()).
 			Build())
 	}
 
 	slog.Error("unknown preset command", "command", *data.SubCommandName)
 	return e.CreateMessage(discord.NewMessageCreateBuilder().
-		SetContent("This command is not implemented yet.").
+		SetContent("Developer Error: Unsupported subcommand").
 		Build())
 }

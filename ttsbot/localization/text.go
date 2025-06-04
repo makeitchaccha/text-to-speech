@@ -8,10 +8,13 @@ import (
 
 type TextResource struct {
 	Generic struct {
-		Guild  string `toml:"guild"` // format: "guild"
-		User   string `toml:"user"`  // format: "user"
-		Preset struct {
+		Guild   string `toml:"guild"`   // format: "guild"
+		User    string `toml:"user"`    // format: "user"
+		Success string `toml:"success"` // format: "Success"
+		Error   string `toml:"error"`   // format: "Error"
+		Preset  struct {
 			Self         string `toml:"self"`          // format: "Preset"
+			List         string `toml:"list"`          // format: "Preset List"
 			Name         string `toml:"name"`          // format: "Preset Name"
 			Engine       string `toml:"engine"`        // format: "Engine"
 			Language     string `toml:"language"`      // format: "Language"
@@ -31,16 +34,23 @@ type TextResource struct {
 			Generic     struct {
 				Description string `toml:"description"` // format: "Manage %[1]s presets"
 				Set         struct {
-					Description string `toml:"description"` // format: "Set a preset for the %[1]s"
-					Name        string `toml:"name"`        // format: "Name of the preset to set"
+					Description   string `toml:"description"`     // format: "Set a preset for the %[1]s"
+					Name          string `toml:"name"`            // format: "Name of the preset to set"
+					Success       string `toml:"success"`         // format: "Preset for %[1]s has been set to %[2]s"
+					ErrorNotFound string `toml:"error_not_found"` // format: "Preset %[1]s not found"
+					ErrorSave     string `toml:"error_save"`      // format: "Failed to save preset ID"
 				} `toml:"set"`
 				Unset struct {
-					Description string `toml:"description"` // format: "Unset a preset for the %[1]s"
+					Description string `toml:"description"`  // format: "Unset a preset for the %[1]s"
+					Success     string `toml:"success"`      // format: "Preset for %[1]s has been unset"
+					ErrorDelete string `toml:"error_delete"` // format: "Failed to delete preset ID"
 				} `toml:"unset"`
 				Show struct {
-					Description string `toml:"description"` // format: "Show the current preset for %[1]s"
-					Current     string `toml:"current"`     // format: "Current preset for %[1]s: %[2]s"
-					None        string `toml:"none"`        // format: "No preset set for %[1]s"
+					Description  string `toml:"description"`   // format: "Show the current preset for %[1]s"
+					Current      string `toml:"current"`       // format: "Current preset for %[1]s"
+					None         string `toml:"none"`          // format: "No preset set for %[1]s"
+					ErrorFetch   string `toml:"error_fetch"`   // format: "Failed to fetch preset for %[1]s"
+					ErrorInvalid string `toml:"error_invalid"` // format: "Preset ID is invalid. \nTo fix this, please set a new preset or unset the current preset."
 				} `toml:"show"`
 			} `toml:"generic"`
 			List struct {
