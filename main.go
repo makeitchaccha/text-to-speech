@@ -34,7 +34,7 @@ var (
 )
 
 func main() {
-	trs, err := localization.LoadTextResources("./locales/text/")
+	trs, err := localization.LoadTextResources("./locales/text/", "en")
 	if err != nil {
 		slog.Error("Failed to load text resources", slog.Any("err", err))
 		os.Exit(-1)
@@ -113,7 +113,7 @@ func main() {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)
 	}
-	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db)))
+	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
 	if err = b.SetupBot(h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()); err != nil {

@@ -26,21 +26,21 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 				Name:        "guild",
 				Description: "Manage guild presets",
 				DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-					return tr.Commands.Preset.Guild.Description
+					return fmt.Sprintf(tr.Commands.Preset.Generic.Description, tr.Generic.Guild)
 				}),
 				Options: []discord.ApplicationCommandOptionSubCommand{
 					{
 						Name:        "set",
 						Description: "Set a preset for the guild",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.Guild.Set.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Set.Description, tr.Generic.Guild)
 						}),
 						Options: []discord.ApplicationCommandOption{
 							discord.ApplicationCommandOptionString{
 								Name:        "name",
 								Description: "Name of the preset to set",
 								DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-									return tr.Commands.Preset.Guild.Set.Name
+									return tr.Commands.Preset.Generic.Set.Name
 								}),
 							},
 						},
@@ -49,14 +49,14 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 						Name:        "unset",
 						Description: "Unset a preset for the guild",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.Guild.Unset.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Unset.Description, tr.Generic.Guild)
 						}),
 					},
 					{
 						Name:        "show",
 						Description: "Show the current preset for the guild",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.Guild.Show.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Show.Description, tr.Generic.Guild)
 						}),
 					},
 				},
@@ -65,21 +65,21 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 				Name:        "user",
 				Description: "Manage user presets",
 				DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-					return tr.Commands.Preset.User.Description
+					return fmt.Sprintf(tr.Commands.Preset.Generic.Description, tr.Generic.User)
 				}),
 				Options: []discord.ApplicationCommandOptionSubCommand{
 					{
 						Name:        "set",
 						Description: "Set a preset for the user",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.User.Set.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Set.Description, tr.Generic.User)
 						}),
 						Options: []discord.ApplicationCommandOption{
 							discord.ApplicationCommandOptionString{
 								Name:        "name",
 								Description: "Name of the preset to set",
 								DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-									return tr.Commands.Preset.User.Set.Name
+									return tr.Commands.Preset.Generic.Set.Name
 								}),
 							},
 						},
@@ -88,14 +88,14 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 						Name:        "unset",
 						Description: "Unset a preset for the user",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.User.Unset.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Unset.Description, tr.Generic.User)
 						}),
 					},
 					{
 						Name:        "show",
 						Description: "Show the current preset for the user",
 						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
-							return tr.Commands.Preset.User.Show.Description
+							return fmt.Sprintf(tr.Commands.Preset.Generic.Show.Description, tr.Generic.User)
 						}),
 					},
 				},
@@ -111,33 +111,47 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	}
 }
 
-func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.PresetResolver, presetIDRepository preset.PresetIDRepository) func(*handler.CommandEvent) error {
+func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.PresetResolver, presetIDRepository preset.PresetIDRepository, trs *localization.TextResources) func(*handler.CommandEvent) error {
 	return func(e *handler.CommandEvent) error {
 		data := e.SlashCommandInteractionData()
 
 		groupName := data.SubCommandGroupName
 		if groupName != nil {
-			return processPresetGroupCommand(e, presetRegistry, presetIDRepository, *groupName)
+			return processPresetGroupCommand(e, presetRegistry, presetIDRepository, *groupName, trs)
 		}
 
 		return processPresetCommand(e, presetRegistry)
 	}
 }
 
-func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetIDRepository preset.PresetIDRepository, groupName string) error {
+func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetIDRepository preset.PresetIDRepository, groupName string, trs *localization.TextResources) error {
+	tr, ok := trs.Get(e.Locale())
+
+	if !ok {
+		slog.Error("failed to get localization for locale", "locale", e.Locale())
+		tr = trs.GetFallback()
+	}
+
 	var scope preset.Scope
 	var id snowflake.ID
+	var generic string
 	switch groupName {
 	case "guild":
 		scope = preset.ScopeGuild
+		generic = tr.Generic.Guild
 		id = *e.GuildID()
 	case "user":
 		scope = preset.ScopeUser
+		generic = tr.Generic.User
 		id = e.User().ID
 	default:
 		slog.Error("unknown preset group", "group", groupName)
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetContent("Unknown preset group: " + groupName).
+			AddEmbeds(discord.NewEmbedBuilder().
+				SetTitle("Error").
+				SetDescription("Developer Error: Unsupported subcommand").
+				SetColor(0xed5555).
+				Build()).
 			Build())
 	}
 
@@ -146,7 +160,6 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 	defer cancel()
 	switch *data.SubCommandName {
 	case "set":
-
 		err := presetIDRepository.Save(ctx, scope, id, preset.PresetID(data.String("name")))
 		if err != nil {
 			slog.Error("failed to save preset ID", "error", err)
@@ -167,14 +180,13 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 				Build())
 		}
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetContentf("Preset for %s unset", scope).
+			SetContentf(tr.Commands.Preset.Generic.Show.None, generic).
 			Build())
 	case "show":
 		presetID, err := presetIDRepository.Find(ctx, scope, id)
 		if err != nil {
 			if errors.Is(err, preset.ErrNotFound) {
 				return e.CreateMessage(discord.NewMessageCreateBuilder().
-					SetContentf("No preset set for %s", scope).
 					Build())
 			}
 			slog.Error("failed to find preset ID", "error", err)
@@ -191,14 +203,28 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 				Build())
 		}
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			SetContentf("Current preset for %s: `%s` (Engine: `%s`, Language: `%s`, Voice: `%s`)",
-				scope, presetID, preset.Engine, preset.Language, preset.VoiceName).
+			AddEmbeds(buildPresetEmbed(preset, tr)).
 			Build())
 	}
 
 	return e.CreateMessage(discord.NewMessageCreateBuilder().
 		SetContent("This command is not implemented yet.").
 		Build())
+}
+
+func buildPresetEmbed(preset preset.Preset, trs localization.TextResource) discord.Embed {
+	embedBuilder := discord.NewEmbedBuilder().
+		SetTitle(trs.Generic.Preset.Self).
+		AddField(trs.Generic.Preset.Name, string(preset.Identifier), true).
+		AddField(trs.Generic.Preset.Engine, preset.Engine, true).
+		AddField(trs.Generic.Preset.Language, preset.Language, true).
+		AddField(trs.Generic.Preset.VoiceName, preset.VoiceName, true)
+
+	if preset.SpeakingRate != 0 {
+		embedBuilder.AddField("Speaking Rate", fmt.Sprintf("%.2f", preset.SpeakingRate), true)
+	}
+
+	return embedBuilder.Build()
 }
 
 func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry) error {
