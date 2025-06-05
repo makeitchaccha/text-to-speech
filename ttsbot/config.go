@@ -2,6 +2,7 @@ package ttsbot
 
 import (
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"time"
@@ -26,7 +27,17 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("config contains undecoded fields: %v", md.Undecoded())
 	}
 
+	overrideString(&cfg.Bot.Token, "BOT_TOKEN")
+
 	return &cfg, nil
+}
+
+func overrideString(value *string, envVar string) {
+	if envValue, exists := os.LookupEnv(envVar); exists && envValue != "" {
+		*value = envValue
+	} else if *value == "" {
+		log.Printf("Warning: %s is not set in the config or environment, using empty string as default", envVar)
+	}
 }
 
 type Config struct {
