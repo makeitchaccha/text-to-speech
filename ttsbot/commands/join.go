@@ -9,24 +9,24 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
 	"github.com/disgoorg/disgo/rest"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/session"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
 )
 
-func joinCmd(trs *localization.TextResources) discord.SlashCommandCreate {
+func joinCmd(trs *i18n.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "join",
 		Description: "Start text-to-speech in text channels",
-		DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+		DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 			return tr.Commands.Join.Description
 		}),
 	}
 }
 
-func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router, trs *localization.TextResources, vrs *localization.VoiceResources) handler.CommandHandler {
+func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router, trs *i18n.TextResources, vrs *i18n.VoiceResources) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
 		tr, ok := trs.Get(e.Locale())
 		if !ok {

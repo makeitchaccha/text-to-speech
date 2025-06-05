@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/disgoorg/disgo/discord"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 )
 
@@ -14,7 +14,7 @@ var (
 	colorInfo    = 0x5555ed
 )
 
-func BuildPresetEmbed(preset preset.Preset, tr localization.TextResource) *discord.EmbedBuilder {
+func BuildPresetEmbed(preset preset.Preset, tr i18n.TextResource) *discord.EmbedBuilder {
 	embedBuilder := discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Preset.Self).
 		AddField(tr.Generic.Preset.Name, string(preset.Identifier), true).
@@ -29,7 +29,7 @@ func BuildPresetEmbed(preset preset.Preset, tr localization.TextResource) *disco
 	return embedBuilder
 }
 
-func BuildJoinEmbed(tr localization.TextResource, channelToRead, voiceChannel string) *discord.EmbedBuilder {
+func BuildJoinEmbed(tr i18n.TextResource, channelToRead, voiceChannel string) *discord.EmbedBuilder {
 	return discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.TTS.Ready).
 		AddField(tr.Generic.TTS.ChannelToRead, channelToRead, true).
@@ -37,19 +37,19 @@ func BuildJoinEmbed(tr localization.TextResource, channelToRead, voiceChannel st
 		SetColor(colorInfo)
 }
 
-func BuildSuccessEmbed(tr localization.TextResource) *discord.EmbedBuilder {
+func BuildSuccessEmbed(tr i18n.TextResource) *discord.EmbedBuilder {
 	return discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Success).
 		SetColor(colorSuccess)
 }
 
-func BuildErrorEmbed(tr localization.TextResource) *discord.EmbedBuilder {
+func BuildErrorEmbed(tr i18n.TextResource) *discord.EmbedBuilder {
 	return discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Error).
 		SetColor(colorDanger)
 }
 
-func BuildPresetListEmbed(presets []preset.Preset, tr localization.TextResource) *discord.EmbedBuilder {
+func BuildPresetListEmbed(presets []preset.Preset, tr i18n.TextResource) *discord.EmbedBuilder {
 	embedBuilder := discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Preset.List).
 		SetColor(colorInfo)

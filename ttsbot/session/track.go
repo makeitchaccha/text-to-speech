@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 
@@ -9,17 +10,18 @@ import (
 	"github.com/disgoorg/audio/mp3"
 	"github.com/disgoorg/audio/pcm"
 	"github.com/disgoorg/disgo/voice"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
 )
 
 type trackPlayer struct {
 	audio.Player
-	queue    <-chan []byte
+	queue    <-chan *tts.SpeechResponse
 	provider pcm.FrameProvider
 	conn     voice.Conn
 	close    <-chan struct{}
 }
 
-func newTrackPlayer(conn voice.Conn, queue <-chan []byte, close <-chan struct{}) (*trackPlayer, error) {
+func newTrackPlayer(conn voice.Conn, queue <-chan *tts.SpeechResponse, close <-chan struct{}) (*trackPlayer, error) {
 	player := &trackPlayer{
 		queue: queue,
 		conn:  conn,
@@ -41,12 +43,28 @@ func (p *trackPlayer) next() {
 		slog.Info("TrackPlayer closed, stopping playback")
 		return
 	case track := <-p.queue:
+		provider, err := convertToFrameProvider(track)
+		if err != nil {
+			slog.Error("Failed to convert track to frame provider", slog.Any("error", err))
+			return
+		}
+		p.provider = provider
+	}
+}
+
+func convertToFrameProvider(resp *tts.SpeechResponse) (pcm.FrameProvider, error) {
+	switch resp.Format {
+	case tts.AudioFormatMp3:
 		provider, w, err := mp3.NewCustomPCMFrameProvider(nil, 48000, 1)
 		if err != nil {
-			slog.Error("Error creating mp3 provider", slog.Any("err", err))
+			return nil, err
 		}
-		p.provider = pcm.NewPCMFrameChannelConverterProvider(provider, 48000, 1, 2)
-		_, _ = io.Copy(w, bytes.NewReader(track))
+		if _, err := io.Copy(w, bytes.NewReader(resp.AudioContent)); err != nil {
+			return nil, err
+		}
+		return pcm.NewPCMFrameChannelConverterProvider(provider, 48000, 1, 2), nil
+	default:
+		return nil, fmt.Errorf("unsupported audio format: %v", resp.Format)
 	}
 }
 

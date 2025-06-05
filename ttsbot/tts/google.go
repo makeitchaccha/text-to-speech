@@ -25,7 +25,7 @@ func (g *GoogleEngine) Name() string {
 	return "google-cloud-text-to-speech"
 }
 
-func (g *GoogleEngine) GenerateSpeech(ctx context.Context, request SpeechRequest) ([]byte, error) {
+func (g *GoogleEngine) GenerateSpeech(ctx context.Context, request SpeechRequest) (*SpeechResponse, error) {
 	slog.Info("Synthesize speech", slog.String("text", request.Text))
 	resp, err := g.client.SynthesizeSpeech(ctx, &texttospeechpb.SynthesizeSpeechRequest{
 		Input: &texttospeechpb.SynthesisInput{
@@ -49,5 +49,9 @@ func (g *GoogleEngine) GenerateSpeech(ctx context.Context, request SpeechRequest
 		return nil, err
 	}
 
-	return resp.AudioContent, nil
+	return &SpeechResponse{
+		Format:       AudioFormatMp3,
+		Channels:     1,
+		AudioContent: resp.AudioContent,
+	}, nil
 }

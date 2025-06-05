@@ -7,7 +7,6 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/disgoorg/audio v0.0.0-20230108034007-9faf157ff94b
 	github.com/disgoorg/disgo v0.18.14
-	github.com/disgoorg/json v1.2.0
 	github.com/disgoorg/log v1.2.0
 	github.com/disgoorg/paginator v0.0.0-20240725182907-1bdf780b5586
 	github.com/disgoorg/snowflake/v2 v2.0.3
@@ -27,6 +26,7 @@ require (
 	cloud.google.com/go/longrunning v0.6.7 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/disgoorg/json v1.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect

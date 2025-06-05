@@ -14,16 +14,31 @@ type Engine interface {
 	// Name returns the name of the TTS engine, e.g. "Google TTS", "Azure TTS", etc.
 	Name() string
 
-	// GenerateSpeech generates speech from the given text and returns the mp3 audio data.
-	GenerateSpeech(ctx context.Context, request SpeechRequest) (audioContent []byte, err error)
+	// GenerateSpeech generates speech from the given text and returns the audio content.
+	GenerateSpeech(ctx context.Context, request SpeechRequest) (resp *SpeechResponse, err error)
 }
 
-type SpeechRequest struct {
-	Text         string
-	LanguageCode string
-	VoiceName    string
-	SpeakingRate float64
-}
+type (
+	SpeechRequest struct {
+		Text         string
+		LanguageCode string
+		VoiceName    string
+		SpeakingRate float64
+	}
+
+	AudioFormat int
+
+	SpeechResponse struct {
+		Format       AudioFormat
+		Channels     int
+		AudioContent []byte
+	}
+)
+
+const (
+	AudioFormatUnknown AudioFormat = iota
+	AudioFormatMp3
+)
 
 type EngineRegistry struct {
 	engines map[string]Engine // identifier -> Engine

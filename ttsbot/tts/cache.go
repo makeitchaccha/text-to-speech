@@ -42,18 +42,18 @@ func (c *CachedTTSEngine) Name() string {
 }
 
 // Generate generates the audio data for the given text, language code, and voice name.
-func (c *CachedTTSEngine) GenerateSpeech(ctx context.Context, request SpeechRequest) ([]byte, error) {
+func (c *CachedTTSEngine) GenerateSpeech(ctx context.Context, request SpeechRequest) (*SpeechResponse, error) {
 	key := c.generateKey(request)
 
-	var audioData []byte
-	err := c.redisCache.Get(ctx, key, &audioData)
+	var resp *SpeechResponse
+	err := c.redisCache.Get(ctx, key, resp)
 
 	if err == nil {
 		slog.Info("cache hit", "key", key, "engine", c.Name())
-		return audioData, nil
+		return resp, nil
 	}
 
-	audioData, err = c.nextEngine.GenerateSpeech(ctx, request)
+	resp, err = c.nextEngine.GenerateSpeech(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *CachedTTSEngine) GenerateSpeech(ctx context.Context, request SpeechRequ
 		if err = c.redisCache.Set(&cache.Item{
 			Ctx:   ctx,
 			Key:   key,
-			Value: audioData,
+			Value: resp,
 			TTL:   c.ttl,
 		}); err != nil {
 			// Log the error but do not return it, as we don't want to fail the request if caching fails
@@ -73,7 +73,7 @@ func (c *CachedTTSEngine) GenerateSpeech(ctx context.Context, request SpeechRequ
 		}
 	}()
 
-	return audioData, nil
+	return resp, nil
 }
 
 // generateKey creates a unique key for the cache based on the request parameters.

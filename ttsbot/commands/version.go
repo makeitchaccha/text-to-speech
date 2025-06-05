@@ -5,14 +5,14 @@ import (
 	"github.com/disgoorg/disgo/handler"
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 )
 
-func versionCmd(trs *localization.TextResources) discord.SlashCommandCreate {
+func versionCmd(trs *i18n.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "version",
 		Description: "Show bot version information",
-		DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+		DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 			return tr.Commands.Version.Description
 		}),
 	}

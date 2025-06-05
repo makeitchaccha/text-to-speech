@@ -22,7 +22,7 @@ import (
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/commands"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/session"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
@@ -34,12 +34,12 @@ var (
 )
 
 func main() {
-	trs, err := localization.LoadTextResources("./locales/text/", "en")
+	trs, err := i18n.LoadTextResources("./locales/text/", "en")
 	if err != nil {
 		slog.Error("Failed to load text resources", slog.Any("err", err))
 		os.Exit(-1)
 	}
-	vrs, err := localization.LoadVoiceResources("./locales/voice/")
+	vrs, err := i18n.LoadVoiceResources("./locales/voice/")
 	if err != nil {
 		slog.Error("Failed to load voice resources", slog.Any("err", err))
 		os.Exit(-1)
