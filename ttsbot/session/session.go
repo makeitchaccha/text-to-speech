@@ -147,14 +147,14 @@ func (s *Session) processTask(task SpeechTask, audioQueue chan<- []byte) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		provider, err := s.performTextToSpeech(ctx, segment, task.Preset)
+		audioContent, err := s.performTextToSpeech(ctx, segment, task.Preset)
 		if err != nil {
 			slog.Error("Failed to perform text-to-speech", slog.Any("err", err), slog.String("content", segment))
 			continue
 		}
 
 		slog.Info("Successfully synthesized speech for segment", "content", segment)
-		audioQueue <- provider
+		audioQueue <- audioContent
 	}
 }
 
