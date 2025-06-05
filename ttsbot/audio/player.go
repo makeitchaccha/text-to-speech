@@ -57,6 +57,7 @@ func (tp *trackPlayer) next() {
 	select {
 	case <-tp.stopSignal:
 		slog.Info("TrackPlayer closed, stopping playback")
+		tp.conn.SetOpusFrameProvider(nil)
 		return
 	case audioData := <-tp.queue:
 		provider, w, err := mp3.NewCustomPCMFrameProvider(nil, 48000, 1)
@@ -91,3 +92,9 @@ func (p *trackPlayer) OnError(player audio.Player, err error) {
 }
 
 func (p *trackPlayer) OnClose(player audio.Player) {}
+
+func (tp *trackPlayer) Close() {
+	tp.Player.Close()
+	tp.conn.SetOpusFrameProvider(nil)
+	slog.Info("TrackPlayer closed")
+}

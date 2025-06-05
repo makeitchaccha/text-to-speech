@@ -53,6 +53,11 @@ func (r *Router) Add(voiceChannelID snowflake.ID, readingChannelID snowflake.ID,
 func (r *Router) Delete(channelID snowflake.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if session, ok := r.sessions[channelID]; ok {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		session.Close(ctx)
+	}
 	delete(r.sessions, channelID)
 	readingChannelID := r.voiceToReading[channelID]
 	delete(r.readingToVoice, readingChannelID)

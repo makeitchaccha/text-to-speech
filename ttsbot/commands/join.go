@@ -133,7 +133,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 					Build(),
 				)
 			}
-			session, err := session.New(engineRegistry, presetResolver, *guildID, textChannel, worker, vrs)
+			session, err := session.New(engineRegistry, presetResolver, *guildID, textChannel, conn, worker, vrs)
 			if err != nil {
 				slog.Error("Failed to create session", slog.Any("err", err), slog.String("textChannelID", textChannel.String()))
 				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().

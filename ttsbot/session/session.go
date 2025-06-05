@@ -11,6 +11,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/rest"
+	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/audio"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
@@ -34,16 +35,18 @@ type Session struct {
 	presetResolver preset.PresetResolver
 	guildID        snowflake.ID
 	textChannelID  snowflake.ID
+	conn           voice.Conn
 	worker         audio.AudioWorker
 	voiceResources *localization.VoiceResources
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, guildID, textChannelID snowflake.ID, worker audio.AudioWorker, vrs *localization.VoiceResources) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, guildID, textChannelID snowflake.ID, conn voice.Conn, worker audio.AudioWorker, vrs *localization.VoiceResources) (*Session, error) {
 	session := &Session{
 		engineRegistry: engineRegistry,
 		presetResolver: presetResolver,
 		guildID:        guildID,
 		textChannelID:  textChannelID,
+		conn:           conn,
 		worker:         worker,
 		voiceResources: vrs,
 	}
@@ -73,6 +76,8 @@ func (s *Session) AnnounceReady(ctx context.Context) {
 
 func (s *Session) Close(ctx context.Context) {
 	s.worker.Stop()
+	s.conn.Close(ctx)
+	slog.Info("Session closed", "guildID", s.guildID, "textChannelID", s.textChannelID)
 }
 
 func (s *Session) onMessageCreate(event *events.MessageCreate) {
