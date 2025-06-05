@@ -13,7 +13,7 @@ import (
 	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
@@ -59,13 +59,13 @@ type Session struct {
 	presetResolver preset.PresetResolver
 	textChannelID  snowflake.ID
 	conn           voice.Conn
-	voiceResources *localization.VoiceResources
+	voiceResources *i18n.VoiceResources
 
 	taskQueue  chan<- SpeechTask
 	stopWorker chan struct{}
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, vrs *localization.VoiceResources) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, vrs *i18n.VoiceResources) (*Session, error) {
 	queue := make(chan SpeechTask, 10)
 	stopWorker := make(chan struct{})
 	session := &Session{

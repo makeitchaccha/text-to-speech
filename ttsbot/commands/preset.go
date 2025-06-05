@@ -10,37 +10,37 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
 	"github.com/disgoorg/snowflake/v2"
-	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 )
 
-func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
+func presetCmd(trs *i18n.TextResources) discord.SlashCommandCreate {
 	return discord.SlashCommandCreate{
 		Name:        "preset",
 		Description: "Manage presets for text-to-speech",
-		DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+		DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 			return tr.Commands.Preset.Description
 		}),
 		Options: []discord.ApplicationCommandOption{
 			discord.ApplicationCommandOptionSubCommandGroup{
 				Name:        "guild",
 				Description: "Manage guild presets",
-				DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+				DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 					return fmt.Sprintf(tr.Commands.Preset.Generic.Description, tr.Generic.Guild)
 				}),
 				Options: []discord.ApplicationCommandOptionSubCommand{
 					{
 						Name:        "set",
 						Description: "Set a preset for the guild",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Set.Description, tr.Generic.Guild)
 						}),
 						Options: []discord.ApplicationCommandOption{
 							discord.ApplicationCommandOptionString{
 								Name:        "name",
 								Description: "Name of the preset to set",
-								DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+								DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 									return tr.Commands.Preset.Generic.Set.Name
 								}),
 							},
@@ -49,14 +49,14 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 					{
 						Name:        "unset",
 						Description: "Unset a preset for the guild",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Unset.Description, tr.Generic.Guild)
 						}),
 					},
 					{
 						Name:        "show",
 						Description: "Show the current preset for the guild",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Show.Description, tr.Generic.Guild)
 						}),
 					},
@@ -65,21 +65,21 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 			discord.ApplicationCommandOptionSubCommandGroup{
 				Name:        "user",
 				Description: "Manage user presets",
-				DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+				DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 					return fmt.Sprintf(tr.Commands.Preset.Generic.Description, tr.Generic.User)
 				}),
 				Options: []discord.ApplicationCommandOptionSubCommand{
 					{
 						Name:        "set",
 						Description: "Set a preset for the user",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Set.Description, tr.Generic.User)
 						}),
 						Options: []discord.ApplicationCommandOption{
 							discord.ApplicationCommandOptionString{
 								Name:        "name",
 								Description: "Name of the preset to set",
-								DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+								DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 									return tr.Commands.Preset.Generic.Set.Name
 								}),
 							},
@@ -88,14 +88,14 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 					{
 						Name:        "unset",
 						Description: "Unset a preset for the user",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Unset.Description, tr.Generic.User)
 						}),
 					},
 					{
 						Name:        "show",
 						Description: "Show the current preset for the user",
-						DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+						DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 							return fmt.Sprintf(tr.Commands.Preset.Generic.Show.Description, tr.Generic.User)
 						}),
 					},
@@ -104,7 +104,7 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 			discord.ApplicationCommandOptionSubCommand{
 				Name:        "list",
 				Description: "List all presets",
-				DescriptionLocalizations: trs.Localizations(func(tr localization.TextResource) string {
+				DescriptionLocalizations: trs.Localizations(func(tr i18n.TextResource) string {
 					return tr.Commands.Preset.List.Description
 				}),
 			},
@@ -112,7 +112,7 @@ func presetCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	}
 }
 
-func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.PresetResolver, presetIDRepository preset.PresetIDRepository, trs *localization.TextResources) func(*handler.CommandEvent) error {
+func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.PresetResolver, presetIDRepository preset.PresetIDRepository, trs *i18n.TextResources) func(*handler.CommandEvent) error {
 	return func(e *handler.CommandEvent) error {
 		data := e.SlashCommandInteractionData()
 
@@ -125,7 +125,7 @@ func PresetHandler(presetRegistry *preset.PresetRegistry, presetResolver preset.
 	}
 }
 
-func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetIDRepository preset.PresetIDRepository, groupName string, trs *localization.TextResources) error {
+func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, presetIDRepository preset.PresetIDRepository, groupName string, trs *i18n.TextResources) error {
 	tr, ok := trs.Get(e.Locale())
 
 	if !ok {
@@ -243,7 +243,7 @@ func processPresetGroupCommand(e *handler.CommandEvent, presetRegistry *preset.P
 		Build())
 }
 
-func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, trs *localization.TextResources) error {
+func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.PresetRegistry, trs *i18n.TextResources) error {
 	data := e.SlashCommandInteractionData()
 	tr, ok := trs.Get(e.Locale())
 	if !ok {
