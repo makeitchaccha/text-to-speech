@@ -29,31 +29,6 @@ const (
 	LeaveResultClose
 )
 
-type SpeechTask struct {
-	Preset   preset.Preset
-	Segments []string
-
-	ContainsName bool
-	Speaker      snowflake.ID
-	SpeakerName  string
-}
-
-func (t *SpeechTask) apply(opts []taskOption) {
-	for _, opt := range opts {
-		opt(t)
-	}
-}
-
-type taskOption func(*SpeechTask)
-
-func withSpeaker(speakerID snowflake.ID, speakerName string) taskOption {
-	return func(task *SpeechTask) {
-		task.ContainsName = true
-		task.Speaker = speakerID
-		task.SpeakerName = speakerName
-	}
-}
-
 type Session struct {
 	engineRegistry *tts.EngineRegistry
 	presetResolver preset.PresetResolver
@@ -98,7 +73,7 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 		}
 
 		segments := []string{vr.Session.Launch}
-		session.enqueueSpeechTask(ctx, segments, preset)
+		session.enqueueSpeechTask(ctx, NewSpeechTask(segments, preset))
 	}()
 
 	return session, nil
@@ -128,9 +103,9 @@ func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
 			return
 
 		case task := <-queue:
-			if task.ContainsName && task.Speaker != lastSpeakerID {
+			if task.ContainsSpeaker && task.SpeakerID != lastSpeakerID {
 				task.Segments = append([]string{task.SpeakerName}, task.Segments...)
-				lastSpeakerID = task.Speaker
+				lastSpeakerID = task.SpeakerID
 			}
 			s.processTask(task, audioQueue)
 		}
@@ -190,34 +165,28 @@ func (s *Session) performTextToSpeech(ctx context.Context, content string, prese
 	return audioConent, nil
 }
 
-func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, preset preset.Preset, opt ...taskOption) {
-	if len(segments) == 0 {
-		slog.Warn("No segments to process for TTS")
+func (s *Session) enqueueSpeechTask(ctx context.Context, task SpeechTask) {
+	if len(task.Segments) == 0 {
+		slog.Warn("Skipping empty speech task", "preset", task.Preset.Identifier)
 		return
 	}
 
-	task := SpeechTask{
-		Preset:   preset,
-		Segments: segments,
-	}
-
-	task.apply(opt)
-
+	slog := slog.With(slog.Attr{Key: "segments", Value: slog.AnyValue(task.Segments)}, slog.Attr{Key: "preset", Value: slog.StringValue(string(task.Preset.Identifier))})
 	select {
 	case <-ctx.Done():
-		slog.Warn("Context cancelled, not enqueuing task", "segments", segments, "preset", preset.Identifier)
+		slog.Warn("Context cancelled, not enqueuing task")
 		return
 	case <-s.stopWorker:
-		slog.Warn("Session worker stopped, not enqueuing task", "segments", segments, "preset", preset.Identifier)
+		slog.Warn("Session worker stopped, not enqueuing task")
 		return
 	default:
 	}
 
 	select {
 	case s.taskQueue <- task:
-		slog.Debug("Enqueued speech task", "segments", segments, "preset", preset.Identifier)
+		slog.Debug("Enqueued speech task")
 	default:
-		slog.Warn("Task queue is full, dropping task", "segments", segments, "preset", preset.Identifier)
+		slog.Warn("Task queue is full, dropping task")
 	}
 }
 
@@ -271,7 +240,7 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 			return append(segments, attachmentsMessage)
 		}()
 
-		s.enqueueSpeechTask(ctx, segments, preset, withSpeaker(event.Message.Author.ID, member.EffectiveName()))
+		s.enqueueSpeechTask(ctx, NewSpeechTask(segments, preset, WithSpeaker(member.EffectiveName(), member.User.ID)))
 		slog.Info("Enqueued speech task", "content", content, "preset", preset.Identifier)
 	}()
 }
@@ -317,7 +286,7 @@ func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
 			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
 		}
 
-		s.enqueueSpeechTask(ctx, segments, preset)
+		s.enqueueSpeechTask(ctx, NewSpeechTask(segments, preset))
 	}()
 }
 
@@ -351,7 +320,7 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 			fmt.Sprintf(vr.Session.UserLeave, event.Member.EffectiveName()),
 		}
 
-		s.enqueueSpeechTask(ctx, segments, preset)
+		s.enqueueSpeechTask(ctx, NewSpeechTask(segments, preset))
 	}()
 
 	return LeaveResultKeepAlive
