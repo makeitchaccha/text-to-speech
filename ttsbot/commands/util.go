@@ -35,6 +35,10 @@ func (e FriendlyError) Message() discord.MessageCreate {
 	return e.message
 }
 
+func (e FriendlyError) Unwrap() error {
+	return e.err
+}
+
 func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snowflake.ID, error) {
 	if e.Context() != discord.InteractionContextTypeGuild {
 		return nil, newFriendlyError(

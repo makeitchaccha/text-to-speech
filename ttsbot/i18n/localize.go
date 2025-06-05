@@ -41,14 +41,6 @@ func (r genericResources[S, T]) GetOrGeneric(locale S) (T, bool) {
 	return zero, false
 }
 
-func (r genericResources[S, T]) Localizations(value func(resource T) string) map[S]string {
-	localizations := make(map[S]string, len(r))
-	for locale, resource := range r {
-		localizations[locale] = value(resource)
-	}
-	return localizations
-}
-
 func load[S ~string, T any, U genericResources[S, T]](directory string, resources U) error {
 	var resource T
 	entries, err := os.ReadDir(directory)

@@ -34,7 +34,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 		}
 
 		voiceChannelID, err := SafeGetVoiceChannelID(e, tr)
-		var friendlyErr FriendlyError
+		var friendlyErr *FriendlyError
 		if ok := errors.As(err, &friendlyErr); ok {
 			slog.Warn("Failed to get voice channel ID", "error", friendlyErr.err)
 			return e.CreateMessage(friendlyErr.Message())

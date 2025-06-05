@@ -25,6 +25,7 @@ type TextResource struct {
 			Ready         string `toml:"ready"`           // format: "Text-to-Speech Ready"
 			ChannelToRead string `toml:"channel_to_read"` // format: "Channel to Read"
 			VoiceChannel  string `toml:"voice_channel"`   // format: "Voice Channel"
+			Thanks        string `toml:"thanks"`          // format: "Thank you for using the Text-to-Speech service!"
 		} `toml:"tts"`
 	} `toml:"generic"`
 	Commands struct {
@@ -37,6 +38,10 @@ type TextResource struct {
 			Description         string `toml:"description"`           // format: "Start text-to-speech in text channels"
 			ErrorAlreadyStarted string `toml:"error_already_started"` // format: "Text-to-speech has already been started"
 		} `toml:"join"`
+		Leave struct {
+			Description     string `toml:"description"`       // format: "Stop text-to-speech in text channels"
+			ErrorNotStarted string `toml:"error_not_started"` // format: "Text-to-speech is not started"
+		} `toml:"leave"`
 		Version struct {
 			Description string `toml:"description"` // format: "Show bot version information"
 		} `toml:"version"`
@@ -92,6 +97,18 @@ func LoadTextResources(directory string, fallbackLocale string) (*TextResources,
 	}
 
 	return resources, nil
+}
+
+// to make sure valid discord.Locale is used, we ignore LocaleUnknown
+func (trs *TextResources) Localizations(f func(tr TextResource) string) map[discord.Locale]string {
+	localizations := make(map[discord.Locale]string, len(trs.genericResources))
+	for locale, resource := range trs.genericResources {
+		if locale.String() == discord.LocaleUnknown.String() {
+			continue
+		}
+		localizations[locale] = f(resource)
+	}
+	return localizations
 }
 
 func (trs *TextResources) GetFallback() TextResource {

@@ -34,7 +34,7 @@ var (
 )
 
 func main() {
-	trs, err := i18n.LoadTextResources("./locales/text/", "en")
+	trs, err := i18n.LoadTextResources("./locales/text/", "en-US")
 	if err != nil {
 		slog.Error("Failed to load text resources", slog.Any("err", err))
 		os.Exit(-1)
@@ -118,6 +118,7 @@ func main() {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)
 	}
+	h.Command("/leave", commands.LeaveHandler(sessionManager, trs))
 	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
