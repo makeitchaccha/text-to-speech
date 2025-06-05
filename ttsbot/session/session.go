@@ -110,7 +110,7 @@ func (s *Session) Close(ctx context.Context) {
 
 func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
 	trackClose := make(chan struct{})
-	audioQueue := make(chan []byte, 10)
+	audioQueue := make(chan *tts.SpeechResponse, 10)
 	trackPlayer, err := newTrackPlayer(s.conn, audioQueue, trackClose)
 	lastSpeakerID := snowflake.ID(0)
 	s.conn.SetOpusFrameProvider(trackPlayer)
@@ -135,7 +135,7 @@ func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
 	}
 }
 
-func (s *Session) processTask(task SpeechTask, audioQueue chan<- []byte) {
+func (s *Session) processTask(task SpeechTask, audioQueue chan<- *tts.SpeechResponse) {
 	slog.Info("Processing speech task", "content", task.Segments, "preset", task.Preset.Identifier)
 
 	for _, segment := range task.Segments {
@@ -147,18 +147,18 @@ func (s *Session) processTask(task SpeechTask, audioQueue chan<- []byte) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		audioContent, err := s.performTextToSpeech(ctx, segment, task.Preset)
+		resp, err := s.performTextToSpeech(ctx, segment, task.Preset)
 		if err != nil {
 			slog.Error("Failed to perform text-to-speech", slog.Any("err", err), slog.String("content", segment))
 			continue
 		}
 
 		slog.Info("Successfully synthesized speech for segment", "content", segment)
-		audioQueue <- audioContent
+		audioQueue <- resp
 	}
 }
 
-func (s *Session) performTextToSpeech(ctx context.Context, content string, preset preset.Preset) ([]byte, error) {
+func (s *Session) performTextToSpeech(ctx context.Context, content string, preset preset.Preset) (*tts.SpeechResponse, error) {
 	slog.Info("Request speech", "content", content)
 	start := time.Now()
 	engine, ok := s.engineRegistry.Get(preset.Engine)
