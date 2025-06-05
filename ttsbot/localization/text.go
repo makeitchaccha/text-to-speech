@@ -77,6 +77,7 @@ type TextResources struct {
 func LoadTextResources(directory string, fallbackLocale string) (*TextResources, error) {
 	resources := &TextResources{
 		genericResources: make(genericResources[discord.Locale, TextResource]),
+		fallbackLocale:   discord.Locale(fallbackLocale),
 	}
 
 	if err := load(directory, resources.genericResources); err != nil {
@@ -84,7 +85,7 @@ func LoadTextResources(directory string, fallbackLocale string) (*TextResources,
 	}
 
 	// validate that the fallback locale is present
-	if _, ok := resources.genericResources[discord.Locale(fallbackLocale)]; !ok {
+	if _, ok := resources.genericResources[resources.fallbackLocale]; !ok {
 		return nil, fmt.Errorf("fallback locale %s not found in text resources", fallbackLocale)
 	}
 
