@@ -68,7 +68,6 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 		// and waiting for it in the same goroutine would block the response from server.
 
 		go func() {
-
 			slog.Info("Connecting to voice channel", "guildID", guildID, "channelID", voiceChannelID)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

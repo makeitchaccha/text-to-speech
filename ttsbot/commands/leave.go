@@ -54,6 +54,5 @@ func LeaveHandler(manager *session.Router, trs *i18n.TextResources) handler.Comm
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
 			AddEmbeds(message.BuildLeaveEmbed(tr).Build()).
 			Build())
-
 	}
 }
