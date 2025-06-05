@@ -10,9 +10,10 @@ type VoiceResources struct {
 
 type VoiceResource struct {
 	Session struct {
-		Launch    string `toml:"launch"`     // "Ready to start text-to-speech in this channel."
-		UserJoin  string `toml:"user_join"`  // "%[1]s has joined the voice channel."
-		UserLeave string `toml:"user_leave"` // "%[1]s has left the voice channel."
+		Launch      string `toml:"launch"`      // "Ready to start text-to-speech in this channel."
+		UserJoin    string `toml:"user_join"`   // "%[1]s has joined the voice channel."
+		UserLeave   string `toml:"user_leave"`  // "%[1]s has left the voice channel."
+		Attachments string `toml:"attachments"` // "%[1]d attachments"
 	} `toml:"session"`
 }
 

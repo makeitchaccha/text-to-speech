@@ -6,7 +6,7 @@ import (
 
 // Engine is a generic interface for text-to-speech engines.
 // It can be implemented by various TTS engines to provide a unified interface for text-to-speech operations.
-// However, currenlty it is only implemented by the Google TTS engine so SynthetizeRequest leaks some Google TTS specific parameters.
+// However, currently it is only implemented by the Google TTS engine so SynthetizeRequest leaks some Google TTS specific parameters.
 //
 // FIXME: when other TTS engines are implemented, this interface should be made more generic.
 // Yet, it is not clear how to make it generic, since different TTS engines have different parameters.
