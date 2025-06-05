@@ -138,10 +138,10 @@ func (w *audioWorkerImpl) workerLoop() {
 				lastSpeakerID = task.Speaker
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
 			if err := w.processTask(ctx, task); err != nil {
 				slog.Error("Failed to process speech task", "error", err, "task", task)
 			}
+			cancel()
 		}
 	}
 }
