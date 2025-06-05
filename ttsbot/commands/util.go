@@ -41,7 +41,7 @@ func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snow
 			fmt.Errorf("command cannot be used outside of a guild"),
 			discord.NewMessageCreateBuilder().
 				AddEmbeds(message.BuildErrorEmbed(tr).
-					SetDescription(tr.Commands.Join.ErrorNotInGuild).
+					SetDescription(tr.Commands.Generic.ErrorNotInGuild).
 					Build()).
 				Build(),
 		)
@@ -59,7 +59,7 @@ func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snow
 				fmt.Errorf("user not in a voice channel"),
 				discord.NewMessageCreateBuilder().
 					AddEmbeds(message.BuildErrorEmbed(tr).
-						SetDescription(tr.Commands.Join.ErrorNotInVoiceChannel).
+						SetDescription(tr.Commands.Generic.ErrorNotInVoiceChannel).
 						Build()).
 					Build(),
 			)
@@ -68,7 +68,7 @@ func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snow
 				fmt.Errorf("missing permissions to get voice state"),
 				discord.NewMessageCreateBuilder().
 					AddEmbeds(message.BuildErrorEmbed(tr).
-						SetDescription(tr.Commands.Join.ErrorInsufficientPermissions).
+						SetDescription(tr.Commands.Generic.ErrorInsufficientPermissions).
 						Build()).
 					Build(),
 			)
@@ -92,7 +92,7 @@ func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snow
 			fmt.Errorf("user not in a voice channel"),
 			discord.NewMessageCreateBuilder().
 				AddEmbeds(message.BuildErrorEmbed(tr).
-					SetDescription(tr.Commands.Join.ErrorNotInVoiceChannel).
+					SetDescription(tr.Commands.Generic.ErrorNotInVoiceChannel).
 					Build()).
 				Build(),
 		)

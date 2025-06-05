@@ -28,12 +28,14 @@ type TextResource struct {
 		} `toml:"tts"`
 	} `toml:"generic"`
 	Commands struct {
-		Join struct {
-			Description                  string `toml:"description"`                    // format: "Start text-to-speech in text channels"
+		Generic struct {
 			ErrorNotInGuild              string `toml:"error_not_in_guild"`             // format: "You must use this command in a guild"
 			ErrorNotInVoiceChannel       string `toml:"error_not_in_voice_channel"`     // format: "You must be in a voice channel to use this command"
-			ErrorAlreadyStarted          string `toml:"error_already_started"`          // format: "Text-to-speech has already been started"
-			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot does not have permission to start text-to-speech."
+			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot has insufficient permissions."
+		} `toml:"generic"`
+		Join struct {
+			Description         string `toml:"description"`           // format: "Start text-to-speech in text channels"
+			ErrorAlreadyStarted string `toml:"error_already_started"` // format: "Text-to-speech has already been started"
 		} `toml:"join"`
 		Version struct {
 			Description string `toml:"description"` // format: "Show bot version information"
