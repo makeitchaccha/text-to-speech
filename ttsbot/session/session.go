@@ -32,15 +32,17 @@ const (
 type Session struct {
 	engineRegistry *tts.EngineRegistry
 	presetResolver preset.PresetResolver
+	guildID        snowflake.ID
 	textChannelID  snowflake.ID
 	worker         audio.AudioWorker
 	voiceResources *localization.VoiceResources
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, worker audio.AudioWorker, vrs *localization.VoiceResources) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, guildID, textChannelID snowflake.ID, worker audio.AudioWorker, vrs *localization.VoiceResources) (*Session, error) {
 	session := &Session{
 		engineRegistry: engineRegistry,
 		presetResolver: presetResolver,
+		guildID:        guildID,
 		textChannelID:  textChannelID,
 		worker:         worker,
 		voiceResources: vrs,
@@ -49,6 +51,24 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 	go session.worker.Start()
 
 	return session, nil
+}
+
+func (s *Session) AnnounceReady(ctx context.Context) {
+	currentPreset, err := s.presetResolver.ResolveGuildPreset(ctx, s.guildID)
+	if err != nil {
+		slog.Error("Failed to resolve preset for session announcement", slog.Any("err", err), slog.String("guildID", s.guildID.String()))
+		return
+	}
+
+	vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(currentPreset.Language))
+	if !ok {
+		slog.Warn("Voice resources not found for locale for session announcement", "locale", currentPreset.Language, "guildID", s.guildID.String())
+		return
+	}
+	s.worker.EnqueueTask(audio.NewSpeechTask(currentPreset, []string{
+		vr.Session.Launch,
+	}))
+	slog.Info("Enqueued session ready announcement", "guildID", s.guildID, "textChannelID", s.textChannelID)
 }
 
 func (s *Session) Close(ctx context.Context) {
