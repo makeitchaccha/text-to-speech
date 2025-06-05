@@ -336,7 +336,7 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 			return
 		}
 		segments := []string{
-			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
+			fmt.Sprintf(vr.Session.UserLeave, event.Member.EffectiveName()),
 		}
 
 		s.enqueueSpeechTask(ctx, segments, preset)
