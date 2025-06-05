@@ -8,6 +8,7 @@ import (
 func Commands(trs *i18n.TextResources) []discord.ApplicationCommandCreate {
 	return []discord.ApplicationCommandCreate{
 		joinCmd(trs),
+		leaveCmd(trs),
 		presetCmd(trs),
 		versionCmd(trs),
 	}

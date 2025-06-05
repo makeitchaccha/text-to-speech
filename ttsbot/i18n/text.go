@@ -25,16 +25,24 @@ type TextResource struct {
 			Ready         string `toml:"ready"`           // format: "Text-to-Speech Ready"
 			ChannelToRead string `toml:"channel_to_read"` // format: "Channel to Read"
 			VoiceChannel  string `toml:"voice_channel"`   // format: "Voice Channel"
+			End           string `toml:"end"`             // format: "Text-to-Speech Ended"
+			Thanks        string `toml:"thanks"`          // format: "Thank you for using the Text-to-Speech service!"
 		} `toml:"tts"`
 	} `toml:"generic"`
 	Commands struct {
-		Join struct {
-			Description                  string `toml:"description"`                    // format: "Start text-to-speech in text channels"
+		Generic struct {
 			ErrorNotInGuild              string `toml:"error_not_in_guild"`             // format: "You must use this command in a guild"
 			ErrorNotInVoiceChannel       string `toml:"error_not_in_voice_channel"`     // format: "You must be in a voice channel to use this command"
-			ErrorAlreadyStarted          string `toml:"error_already_started"`          // format: "Text-to-speech has already been started"
-			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot does not have permission to start text-to-speech."
+			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot has insufficient permissions."
+		} `toml:"generic"`
+		Join struct {
+			Description         string `toml:"description"`           // format: "Start text-to-speech in text channels"
+			ErrorAlreadyStarted string `toml:"error_already_started"` // format: "Text-to-speech has already been started"
 		} `toml:"join"`
+		Leave struct {
+			Description     string `toml:"description"`       // format: "Stop text-to-speech in text channels"
+			ErrorNotStarted string `toml:"error_not_started"` // format: "Text-to-speech is not started"
+		} `toml:"leave"`
 		Version struct {
 			Description string `toml:"description"` // format: "Show bot version information"
 		} `toml:"version"`
@@ -90,6 +98,18 @@ func LoadTextResources(directory string, fallbackLocale string) (*TextResources,
 	}
 
 	return resources, nil
+}
+
+// to make sure valid discord.Locale is used, we ignore LocaleUnknown
+func (trs *TextResources) Localizations(f func(tr TextResource) string) map[discord.Locale]string {
+	localizations := make(map[discord.Locale]string, len(trs.genericResources))
+	for locale, resource := range trs.genericResources {
+		if locale.String() == discord.LocaleUnknown.String() {
+			continue
+		}
+		localizations[locale] = f(resource)
+	}
+	return localizations
 }
 
 func (trs *TextResources) GetFallback() TextResource {

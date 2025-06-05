@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 )
 
 type Router struct {
@@ -100,6 +102,13 @@ func (m *Router) handleLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) {
 			defer cancel()
 			session.Close(ctx)
 			m.Delete(*event.OldVoiceState.ChannelID)
+			_, err := event.Client().Rest().CreateMessage(session.textChannelID, discord.NewMessageCreateBuilder().
+				AddEmbeds(message.BuildLeaveEmbed(*session.textResource).Build()).
+				Build(),
+			)
+			if err != nil {
+				event.Client().Logger().Error("Failed to send leave message", "error", err, "textChannelID", session.textChannelID)
+			}
 		}
 	}
 }
