@@ -8,7 +8,6 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
-	"github.com/disgoorg/disgo/rest"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/i18n"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
@@ -34,53 +33,19 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 			tr = trs.GetFallback()
 		}
 
-		if e.Context() != discord.InteractionContextTypeGuild {
-			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				AddEmbeds(message.BuildErrorEmbed(tr).
-					SetDescription(tr.Commands.Join.ErrorNotInGuild).
-					Build()).
-				Build())
+		voiceChannelID, err := SafeGetVoiceChannelID(e, tr)
+		var friendlyErr FriendlyError
+		if ok := errors.As(err, &friendlyErr); ok {
+			slog.Warn("Failed to get voice channel ID", "error", friendlyErr.err)
+			return e.CreateMessage(friendlyErr.Message())
 		}
 
-		guildID := e.GuildID()
-
-		// user must be in a voice channel to use this command
-		voiceState, err := e.Client().Rest().GetUserVoiceState(*guildID, e.User().ID)
-		var restErr rest.Error
-		if ok := errors.As(err, &restErr); ok {
-			switch restErr.Code {
-			case 10065:
-				return e.CreateMessage(discord.MessageCreate{
-					Content: "You must be in a voice channel to use this command.",
-				})
-			case 50013:
-				return e.CreateMessage(discord.NewMessageCreateBuilder().
-					AddEmbeds(message.BuildErrorEmbed(tr).
-						SetDescription(tr.Commands.Join.ErrorInsufficientPermissions).
-						Build()).
-					Build())
-			}
-		}
-
-		if err != nil {
-			slog.Warn("failed to get voice state", "error", err)
-			return e.CreateMessage(discord.MessageCreate{
-				Content: "failed to get voice state: " + err.Error(),
-			})
-		}
-
-		if voiceState.ChannelID == nil {
-			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				AddEmbeds(message.BuildErrorEmbed(tr).
-					SetDescription(tr.Commands.Join.ErrorNotInVoiceChannel).
-					Build()).
-				Build())
-		}
+		guildID := *e.GuildID()
 
 		voiceManager := e.Client().VoiceManager()
-		conn := voiceManager.GetConn(*guildID)
+		conn := voiceManager.GetConn(guildID)
 		connected := conn != nil
-		if connected && conn.ChannelID() == voiceState.ChannelID {
+		if connected && *conn.ChannelID() == *voiceChannelID {
 			return e.CreateMessage(discord.NewMessageCreateBuilder().
 				AddEmbeds(message.BuildErrorEmbed(tr).
 					SetDescription(tr.Commands.Join.ErrorAlreadyStarted).
@@ -89,8 +54,8 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 		}
 
 		if !connected {
-			slog.Info("Creating voice connection", "guildID", *guildID, "channelID", voiceState.ChannelID)
-			conn = voiceManager.CreateConn(*guildID)
+			slog.Info("Creating voice connection", "guildID", guildID, "channelID", *voiceChannelID)
+			conn = voiceManager.CreateConn(guildID)
 		}
 
 		err = e.DeferCreateMessage(false)
@@ -103,13 +68,12 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 		// and waiting for it in the same goroutine would block the response from server.
 
 		go func() {
-			voiceChannelID := *voiceState.ChannelID
 
-			slog.Info("Connecting to voice channel", "guildID", *guildID, "channelID", voiceChannelID)
+			slog.Info("Connecting to voice channel", "guildID", guildID, "channelID", voiceChannelID)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			if err := conn.Open(ctx, voiceChannelID, false, true); err != nil {
+			if err := conn.Open(ctx, *voiceChannelID, false, true); err != nil {
 				slog.Warn("Failed to connect to voice channel", "error", err)
 				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
 					SetContent("Failed to connect to voice channel: " + err.Error()).Build(),
@@ -117,7 +81,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 				return
 			}
 
-			slog.Info("Connected to voice channel", "guildID", *guildID, "channelID", voiceChannelID)
+			slog.Info("Connected to voice channel", "guildID", guildID, "channelID", *voiceChannelID)
 
 			textChannel := e.Channel().ID()
 
@@ -133,7 +97,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 			if _, err := e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
 				AddEmbeds(
-					message.BuildJoinEmbed(tr, discord.ChannelMention(textChannel), discord.ChannelMention(voiceChannelID)).
+					message.BuildJoinEmbed(tr, discord.ChannelMention(textChannel), discord.ChannelMention(*voiceChannelID)).
 						Build(),
 				).
 				Build(),
@@ -142,7 +106,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 			}
 
 			slog.Info("Session created", "textChannelID", textChannel, "voiceChannelID", voiceChannelID)
-			manager.Add(voiceChannelID, textChannel, session)
+			manager.Add(*voiceChannelID, textChannel, session)
 		}()
 
 		return nil
