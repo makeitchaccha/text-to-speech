@@ -29,6 +29,14 @@ func BuildPresetEmbed(preset preset.Preset, tr localization.TextResource) *disco
 	return embedBuilder
 }
 
+func BuildJoinEmbed(tr localization.TextResource, channelToRead, voiceChannel string) *discord.EmbedBuilder {
+	return discord.NewEmbedBuilder().
+		SetTitle(tr.Generic.TTS.Ready).
+		AddField(tr.Generic.TTS.ChannelToRead, channelToRead, true).
+		AddField(tr.Generic.TTS.VoiceChannel, voiceChannel, true).
+		SetColor(colorInfo)
+}
+
 func BuildSuccessEmbed(tr localization.TextResource) *discord.EmbedBuilder {
 	return discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Success).

@@ -108,7 +108,7 @@ func main() {
 	}
 
 	h := handler.New()
-	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager))
+	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager, trs))
 	if err != nil {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)

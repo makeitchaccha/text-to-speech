@@ -21,10 +21,19 @@ type TextResource struct {
 			VoiceName    string `toml:"voice_name"`    // format: "Voice Name"
 			SpeakingRate string `toml:"speaking_rate"` // format: "Speaking Rate"
 		} `toml:"preset"`
+		TTS struct {
+			Ready         string `toml:"ready"`           // format: "Text-to-Speech Ready"
+			ChannelToRead string `toml:"channel_to_read"` // format: "Channel to Read"
+			VoiceChannel  string `toml:"voice_channel"`   // format: "Voice Channel"
+		} `toml:"tts"`
 	} `toml:"generic"`
 	Commands struct {
 		Join struct {
-			Description string `toml:"description"` // format: "Start text-to-speech in text channels"
+			Description                  string `toml:"description"`                    // format: "Start text-to-speech in text channels"
+			ErrorNotInGuild              string `toml:"error_not_in_guild"`             // format: "You must use this command in a guild"
+			ErrorNotInVoiceChannel       string `toml:"error_not_in_voice_channel"`     // format: "You must be in a voice channel to use this command"
+			ErrorAlreadyStarted          string `toml:"error_already_started"`          // format: "Text-to-speech has already been started"
+			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot does not have permission to start text-to-speech."
 		} `toml:"join"`
 		Version struct {
 			Description string `toml:"description"` // format: "Show bot version information"
