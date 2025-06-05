@@ -11,8 +11,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/rest"
-	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/audio"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
@@ -29,194 +29,30 @@ const (
 	LeaveResultClose
 )
 
-type SpeechTask struct {
-	Preset   preset.Preset
-	Segments []string
-
-	ContainsName bool
-	Speaker      snowflake.ID
-	SpeakerName  string
-}
-
-func (t *SpeechTask) apply(opts []taskOption) {
-	for _, opt := range opts {
-		opt(t)
-	}
-}
-
-type taskOption func(*SpeechTask)
-
-func withSpeaker(speakerID snowflake.ID, speakerName string) taskOption {
-	return func(task *SpeechTask) {
-		task.ContainsName = true
-		task.Speaker = speakerID
-		task.SpeakerName = speakerName
-	}
-}
-
 type Session struct {
 	engineRegistry *tts.EngineRegistry
 	presetResolver preset.PresetResolver
 	textChannelID  snowflake.ID
-	conn           voice.Conn
+	worker         audio.AudioWorker
 	voiceResources *localization.VoiceResources
-
-	taskQueue  chan<- SpeechTask
-	stopWorker chan struct{}
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, vrs *localization.VoiceResources) (*Session, error) {
-	queue := make(chan SpeechTask, 10)
-	stopWorker := make(chan struct{})
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, worker audio.AudioWorker, vrs *localization.VoiceResources) (*Session, error) {
 	session := &Session{
 		engineRegistry: engineRegistry,
 		presetResolver: presetResolver,
 		textChannelID:  textChannelID,
-		conn:           conn,
+		worker:         worker,
 		voiceResources: vrs,
-		taskQueue:      queue,
-		stopWorker:     stopWorker,
 	}
 
-	go session.worker(queue, stopWorker)
-
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		preset, err := presetResolver.ResolveGuildPreset(ctx, conn.GuildID())
-		if err != nil {
-			slog.Error("Failed to resolve preset for session", slog.Any("err", err), slog.String("guildID", conn.GuildID().String()))
-			return
-		}
-
-		vr, ok := vrs.GetOrGeneric(discord.Locale(preset.Language))
-		if !ok {
-			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
-			return
-		}
-
-		segments := []string{vr.Session.Launch}
-		session.enqueueSpeechTask(ctx, segments, preset)
-	}()
+	go session.worker.Start()
 
 	return session, nil
 }
 
 func (s *Session) Close(ctx context.Context) {
-	s.conn.Close(ctx)
-	close(s.stopWorker)
-	close(s.taskQueue)
-}
-
-func (s *Session) worker(queue <-chan SpeechTask, stopWorker <-chan struct{}) {
-	trackClose := make(chan struct{})
-	audioQueue := make(chan []byte, 10)
-	trackPlayer, err := newTrackPlayer(s.conn, audioQueue, trackClose)
-	lastSpeakerID := snowflake.ID(0)
-	s.conn.SetOpusFrameProvider(trackPlayer)
-	if err != nil {
-		slog.Error("Failed to create track player", slog.Any("err", err))
-		return
-	}
-	slog.Info("Session worker started", "textChannelID", s.textChannelID, "voiceChannelID", s.conn.ChannelID())
-	for {
-		select {
-		case <-stopWorker:
-			slog.Info("Stopping session worker")
-			return
-
-		case task := <-queue:
-			if task.ContainsName && task.Speaker != lastSpeakerID {
-				task.Segments = append([]string{task.SpeakerName}, task.Segments...)
-				lastSpeakerID = task.Speaker
-			}
-			s.processTask(task, audioQueue)
-		}
-	}
-}
-
-func (s *Session) processTask(task SpeechTask, audioQueue chan<- []byte) {
-	slog.Info("Processing speech task", "content", task.Segments, "preset", task.Preset.Identifier)
-
-	for _, segment := range task.Segments {
-		if segment == "" {
-			slog.Warn("Skipping empty segment in speech task", "preset", task.Preset.Identifier)
-			continue
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		provider, err := s.performTextToSpeech(ctx, segment, task.Preset)
-		if err != nil {
-			slog.Error("Failed to perform text-to-speech", slog.Any("err", err), slog.String("content", segment))
-			continue
-		}
-
-		slog.Info("Successfully synthesized speech for segment", "content", segment)
-		audioQueue <- provider
-	}
-}
-
-func (s *Session) performTextToSpeech(ctx context.Context, content string, preset preset.Preset) ([]byte, error) {
-	slog.Info("Request speech", "content", content)
-	start := time.Now()
-	engine, ok := s.engineRegistry.Get(preset.Engine)
-
-	if !ok {
-		slog.Error("TTS engine not found", slog.String("engine", preset.Engine), slog.String("content", content))
-		return nil, fmt.Errorf("TTS engine %s not found", preset.Engine)
-	}
-
-	speechRequest := tts.SpeechRequest{
-		Text:         content,
-		LanguageCode: preset.Language,
-		VoiceName:    preset.VoiceName,
-		SpeakingRate: preset.SpeakingRate,
-	}
-
-	audioConent, err := engine.GenerateSpeech(ctx, speechRequest)
-
-	if err != nil {
-		slog.Error("Failed to synthesize speech", slog.Any("err", err), slog.String("content", content))
-		return nil, fmt.Errorf("failed to synthesize speech: %w", err)
-	}
-	end := time.Now()
-	slog.Info("Successfully synthesized speech", "duration", end.Sub(start))
-	slog.Info("Playing audio in voice channel", "guildID", s.conn.GuildID(), "channelID", s.conn.ChannelID())
-
-	return audioConent, nil
-}
-
-func (s *Session) enqueueSpeechTask(ctx context.Context, segments []string, preset preset.Preset, opt ...taskOption) {
-	if len(segments) == 0 {
-		slog.Warn("No segments to process for TTS")
-		return
-	}
-
-	task := SpeechTask{
-		Preset:   preset,
-		Segments: segments,
-	}
-
-	task.apply(opt)
-
-	select {
-	case <-ctx.Done():
-		slog.Warn("Context cancelled, not enqueuing task", "segments", segments, "preset", preset.Identifier)
-		return
-	case <-s.stopWorker:
-		slog.Warn("Session worker stopped, not enqueuing task", "segments", segments, "preset", preset.Identifier)
-		return
-	default:
-	}
-
-	select {
-	case s.taskQueue <- task:
-		slog.Debug("Enqueued speech task", "segments", segments, "preset", preset.Identifier)
-	default:
-		slog.Warn("Task queue is full, dropping task", "segments", segments, "preset", preset.Identifier)
-	}
+	s.worker.Stop()
 }
 
 func (s *Session) onMessageCreate(event *events.MessageCreate) {
@@ -257,7 +93,7 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 			return
 		}
 
-		s.enqueueSpeechTask(ctx, segments, preset, withSpeaker(event.Message.Author.ID, member.EffectiveName()))
+		s.worker.EnqueueTask(audio.NewSpeechTask(preset, segments, audio.WithSpeaker(event.Message.Author.ID, member.EffectiveName())))
 		slog.Info("Enqueued speech task", "content", content, "preset", preset.Identifier)
 	}()
 }
@@ -299,11 +135,10 @@ func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
 			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 			return
 		}
-		segments := []string{
-			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
-		}
 
-		s.enqueueSpeechTask(ctx, segments, preset)
+		s.worker.EnqueueTask(audio.NewSpeechTask(preset, []string{
+			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
+		}))
 	}()
 }
 
@@ -333,11 +168,10 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 			return
 		}
-		segments := []string{
-			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
-		}
 
-		s.enqueueSpeechTask(ctx, segments, preset)
+		s.worker.EnqueueTask(audio.NewSpeechTask(preset, []string{
+			fmt.Sprintf(vr.Session.UserLeave, event.Member.EffectiveName()),
+		}))
 	}()
 
 	return LeaveResultKeepAlive
@@ -394,5 +228,5 @@ func fetchUser(guildID, userID snowflake.ID, client rest.Users, cache cache.Memb
 }
 
 func (s *Session) String() string {
-	return fmt.Sprintf("Session(textChannelID: %s, voiceChannelID: %s)", s.textChannelID, s.conn.ChannelID())
+	return fmt.Sprintf("Session(textChannelID: %s)", s.textChannelID)
 }

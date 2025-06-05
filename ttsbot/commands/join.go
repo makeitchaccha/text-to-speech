@@ -9,6 +9,7 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/handler"
 	"github.com/disgoorg/disgo/rest"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/audio"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
@@ -121,7 +122,18 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 			textChannel := e.Channel().ID()
 
-			session, err := session.New(engineRegistry, presetResolver, textChannel, conn, vrs)
+			worker, err := audio.NewAudioWorker(conn, engineRegistry, 20)
+			if err != nil {
+				slog.Error("Failed to create audio worker", slog.Any("err", err), slog.String("textChannelID", textChannel.String()))
+				// TODO: localize
+				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
+					AddEmbeds(message.BuildErrorEmbed(tr).
+						SetDescription("Failed to create audio worker: " + err.Error()).
+						Build()).
+					Build(),
+				)
+			}
+			session, err := session.New(engineRegistry, presetResolver, textChannel, worker, vrs)
 			if err != nil {
 				slog.Error("Failed to create session", slog.Any("err", err), slog.String("textChannelID", textChannel.String()))
 				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
