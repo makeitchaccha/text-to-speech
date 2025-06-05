@@ -30,6 +30,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 FROM alpine
 
+WORKDIR /app
+
 RUN apk add --no-cache \
     ca-certificates \
     opus \
@@ -37,6 +39,7 @@ RUN apk add --no-cache \
     mpg123
 
 COPY --from=build /build/bot /bin/bot
+COPY --from=build /build/locales /app/locales
 
 ENTRYPOINT ["/bin/bot"]
 
