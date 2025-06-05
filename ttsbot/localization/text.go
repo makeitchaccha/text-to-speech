@@ -2,125 +2,102 @@ package localization
 
 import (
 	"fmt"
-	"log/slog"
-	"os"
-	"path"
-	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/disgoorg/disgo/discord"
 )
 
-type TextResources map[discord.Locale]TextResource
-
 type TextResource struct {
+	Generic struct {
+		Guild   string `toml:"guild"`   // format: "guild"
+		User    string `toml:"user"`    // format: "user"
+		Success string `toml:"success"` // format: "Success"
+		Error   string `toml:"error"`   // format: "Error"
+		Preset  struct {
+			Self         string `toml:"self"`          // format: "Preset"
+			List         string `toml:"list"`          // format: "Preset List"
+			Name         string `toml:"name"`          // format: "Preset Name"
+			Engine       string `toml:"engine"`        // format: "Engine"
+			Language     string `toml:"language"`      // format: "Language"
+			VoiceName    string `toml:"voice_name"`    // format: "Voice Name"
+			SpeakingRate string `toml:"speaking_rate"` // format: "Speaking Rate"
+		} `toml:"preset"`
+		TTS struct {
+			Ready         string `toml:"ready"`           // format: "Text-to-Speech Ready"
+			ChannelToRead string `toml:"channel_to_read"` // format: "Channel to Read"
+			VoiceChannel  string `toml:"voice_channel"`   // format: "Voice Channel"
+		} `toml:"tts"`
+	} `toml:"generic"`
 	Commands struct {
 		Join struct {
-			Description string `toml:"description"` // format: "Start text-to-speech in text channels"`
+			Description                  string `toml:"description"`                    // format: "Start text-to-speech in text channels"
+			ErrorNotInGuild              string `toml:"error_not_in_guild"`             // format: "You must use this command in a guild"
+			ErrorNotInVoiceChannel       string `toml:"error_not_in_voice_channel"`     // format: "You must be in a voice channel to use this command"
+			ErrorAlreadyStarted          string `toml:"error_already_started"`          // format: "Text-to-speech has already been started"
+			ErrorInsufficientPermissions string `toml:"error_insufficient_permissions"` // format: "Bot does not have permission to start text-to-speech."
 		} `toml:"join"`
 		Version struct {
-			Description string `toml:"description"` // format: "Show bot version information"`
+			Description string `toml:"description"` // format: "Show bot version information"
 		} `toml:"version"`
 		Preset struct {
-			Description string `toml:"description"` // format: "Manage presets for text-to-speech"`
-			Guild       struct {
-				Description string `toml:"description"` // format: "Manage guild presets"`
+			Description string `toml:"description"` // format: "Manage presets for text-to-speech"
+			Generic     struct {
+				Description string `toml:"description"` // format: "Manage %[1]s presets"
 				Set         struct {
-					Description string `toml:"description"` // format: "Set a preset for the guild"`
-					Name        string `toml:"name"`        // format: "Name of the preset to set"`
+					Description   string `toml:"description"`     // format: "Set a preset for the %[1]s"
+					Name          string `toml:"name"`            // format: "Name of the preset to set"
+					Success       string `toml:"success"`         // format: "Preset for %[1]s has been set to %[2]s"
+					ErrorNotFound string `toml:"error_not_found"` // format: "Preset %[1]s not found"
+					ErrorSave     string `toml:"error_save"`      // format: "Failed to save preset ID"
 				} `toml:"set"`
 				Unset struct {
-					Description string `toml:"description"` // format: "Unset a preset for the guild"`
+					Description string `toml:"description"`  // format: "Unset a preset for the %[1]s"
+					Success     string `toml:"success"`      // format: "Preset for %[1]s has been unset"
+					ErrorDelete string `toml:"error_delete"` // format: "Failed to delete preset ID"
 				} `toml:"unset"`
 				Show struct {
-					Description string `toml:"description"` // format: "Show the current preset for the guild"`
+					Description  string `toml:"description"`   // format: "Show the current preset for %[1]s"
+					Current      string `toml:"current"`       // format: "Current preset for %[1]s"
+					None         string `toml:"none"`          // format: "No preset set for %[1]s"
+					ErrorFetch   string `toml:"error_fetch"`   // format: "Failed to fetch preset for %[1]s"
+					ErrorInvalid string `toml:"error_invalid"` // format: "Preset ID is invalid. \nTo fix this, please set a new preset or unset the current preset."
 				} `toml:"show"`
-			} `toml:"guild"`
-			User struct {
-				Description string `toml:"description"` // format: "Manage user presets"`
-				Set         struct {
-					Description string `toml:"description"` // format: "Set a preset for the user"`
-					Name        string `toml:"name"`        // format: "Name of the preset to set"`
-				} `toml:"set"`
-				Unset struct {
-					Description string `toml:"description"` // format: "Unset a preset for the user"`
-				} `toml:"unset"`
-				Show struct {
-					Description string `toml:"description"` // format: "Show the current preset for the user"`
-				} `toml:"show"`
-			} `toml:"user"`
+			} `toml:"generic"`
 			List struct {
-				Description string `toml:"description"` // format: "List all presets"`
+				Description string `toml:"description"` // format: "List all presets"
 			} `toml:"list"`
 		} `toml:"preset"`
 	} `toml:"commands"`
 }
 
-func LoadTextResources(directory string) (TextResources, error) {
-	trs := make(TextResources)
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read text resources directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			// Skip directories
-			continue
-		}
-
-		if !strings.HasSuffix(entry.Name(), ".toml") {
-			// Skip non-TOML files
-			continue
-		}
-
-		locale := strings.TrimSuffix(entry.Name(), ".toml")
-
-		filePath := path.Join(directory, entry.Name())
-
-		file, err := os.Open(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open text resource file %s: %w", filePath, err)
-		}
-		defer file.Close()
-
-		var resource TextResource
-		metadata, err := toml.NewDecoder(file).Decode(&resource)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode text resource file %s: %w", filePath, err)
-		}
-
-		if len(metadata.Undecoded()) > 0 {
-			slog.Warn("text resource file contains undecoded fields", "file", filePath, "fields", metadata.Undecoded())
-			return nil, fmt.Errorf("text resource file %s contains undecoded fields: %v", filePath, metadata.Undecoded())
-		}
-
-		discordLocale := discord.Locale(locale)
-		if discordLocale.String() == discord.LocaleUnknown.String() {
-			slog.Warn("text resource file has invalid locale", "file", filePath, "locale", locale)
-			return nil, fmt.Errorf("text resource file %s has invalid locale: %s", filePath, locale)
-		}
-		trs[discordLocale] = resource
-		slog.Info("Loaded text resource", "locale", locale, "file", filePath)
-	}
-
-	return trs, nil
+type TextResources struct {
+	genericResources[discord.Locale, TextResource]
+	fallbackLocale discord.Locale
 }
 
-func (tr TextResources) Localizations(value func(textResource TextResource) string) map[discord.Locale]string {
-	localizations := make(map[discord.Locale]string)
-
-	for locale, resource := range tr {
-		localizations[locale] = value(resource)
+func LoadTextResources(directory string, fallbackLocale string) (*TextResources, error) {
+	resources := &TextResources{
+		genericResources: make(genericResources[discord.Locale, TextResource]),
+		fallbackLocale:   discord.Locale(fallbackLocale),
 	}
 
-	return localizations
+	if err := load(directory, resources.genericResources); err != nil {
+		return nil, err
+	}
+
+	// validate that the fallback locale is present
+	if _, ok := resources.genericResources[resources.fallbackLocale]; !ok {
+		return nil, fmt.Errorf("fallback locale %s not found in text resources", fallbackLocale)
+	}
+
+	return resources, nil
 }
 
-func (tr TextResources) Get(locale discord.Locale) TextResource {
-	resource, ok := tr[locale]
+func (trs *TextResources) GetFallback() TextResource {
+	resource, ok := trs.genericResources[trs.fallbackLocale]
 	if !ok {
-		return tr[discord.LocaleEnglishUS] // Fallback to English US if the requested locale is not found
+		// it won't happen because we validated it in LoadTextResources
+		// but we panic here to make sure we catch it during development
+		panic(fmt.Sprintf("fallback locale %s not found in text resources", trs.fallbackLocale))
 	}
 	return resource
 }

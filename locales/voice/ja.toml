@@ -1,0 +1,3 @@
+session.launch = "読み上げを開始します"
+session.user_join = "%[1]sがボイスチャンネルに参加しました"
+session.user_leave = "%[1]sがボイスチャンネルから退出しました"

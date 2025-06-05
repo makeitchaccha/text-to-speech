@@ -13,6 +13,7 @@ import (
 	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/voice"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/makeitchaccha/text-to-speech/ttsbot/localization"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
@@ -58,12 +59,13 @@ type Session struct {
 	presetResolver preset.PresetResolver
 	textChannelID  snowflake.ID
 	conn           voice.Conn
+	voiceResources *localization.VoiceResources
 
 	taskQueue  chan<- SpeechTask
 	stopWorker chan struct{}
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, vrs *localization.VoiceResources) (*Session, error) {
 	queue := make(chan SpeechTask, 10)
 	stopWorker := make(chan struct{})
 	session := &Session{
@@ -71,11 +73,31 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 		presetResolver: presetResolver,
 		textChannelID:  textChannelID,
 		conn:           conn,
+		voiceResources: vrs,
 		taskQueue:      queue,
 		stopWorker:     stopWorker,
 	}
 
 	go session.worker(queue, stopWorker)
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		preset, err := presetResolver.ResolveGuildPreset(ctx, conn.GuildID())
+		if err != nil {
+			slog.Error("Failed to resolve preset for session", slog.Any("err", err), slog.String("guildID", conn.GuildID().String()))
+			return
+		}
+
+		vr, ok := vrs.GetOrGeneric(discord.Locale(preset.Language))
+		if !ok {
+			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
+			return
+		}
+
+		segments := []string{vr.Session.Launch}
+		session.enqueueSpeechTask(ctx, segments, preset)
+	}()
 
 	return session, nil
 }
@@ -266,15 +288,19 @@ func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		preset, err := s.presetResolver.Resolve(ctx, event.Member.GuildID, event.Member.User.ID)
+		preset, err := s.presetResolver.ResolveGuildPreset(ctx, event.Member.GuildID)
 		if err != nil {
 			slog.Error("Failed to resolve preset", slog.Any("err", err))
 			return
 		}
 
+		vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+		if !ok {
+			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
+			return
+		}
 		segments := []string{
-			event.Member.EffectiveName(),
-			"がボイスチャンネルに参加しました",
+			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
 		}
 
 		s.enqueueSpeechTask(ctx, segments, preset)
@@ -296,15 +322,19 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		preset, err := s.presetResolver.Resolve(ctx, voiceState.GuildID, voiceState.UserID)
+		preset, err := s.presetResolver.ResolveGuildPreset(ctx, event.Member.GuildID)
 		if err != nil {
 			slog.Error("Failed to resolve preset", slog.Any("err", err))
 			return
 		}
 
+		vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+		if !ok {
+			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
+			return
+		}
 		segments := []string{
-			event.Member.EffectiveName(),
-			"がボイスチャンネルから離脱しました",
+			fmt.Sprintf(vr.Session.UserJoin, event.Member.EffectiveName()),
 		}
 
 		s.enqueueSpeechTask(ctx, segments, preset)

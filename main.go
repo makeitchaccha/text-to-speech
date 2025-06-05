@@ -34,9 +34,14 @@ var (
 )
 
 func main() {
-	trs, err := localization.LoadTextResources("./locales/text/")
+	trs, err := localization.LoadTextResources("./locales/text/", "en")
 	if err != nil {
 		slog.Error("Failed to load text resources", slog.Any("err", err))
+		os.Exit(-1)
+	}
+	vrs, err := localization.LoadVoiceResources("./locales/voice/")
+	if err != nil {
+		slog.Error("Failed to load voice resources", slog.Any("err", err))
 		os.Exit(-1)
 	}
 
@@ -108,12 +113,12 @@ func main() {
 	}
 
 	h := handler.New()
-	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager))
+	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager, trs, vrs))
 	if err != nil {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)
 	}
-	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db)))
+	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
 	if err = b.SetupBot(h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()); err != nil {
