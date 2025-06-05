@@ -60,12 +60,13 @@ type Session struct {
 	textChannelID  snowflake.ID
 	conn           voice.Conn
 	voiceResources *i18n.VoiceResources
+	textResource   *i18n.TextResource
 
 	taskQueue  chan<- SpeechTask
 	stopWorker chan struct{}
 }
 
-func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, vrs *i18n.VoiceResources) (*Session, error) {
+func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, textChannelID snowflake.ID, conn voice.Conn, tr *i18n.TextResource, vrs *i18n.VoiceResources) (*Session, error) {
 	queue := make(chan SpeechTask, 10)
 	stopWorker := make(chan struct{})
 	session := &Session{
@@ -74,6 +75,7 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 		textChannelID:  textChannelID,
 		conn:           conn,
 		voiceResources: vrs,
+		textResource:   tr,
 		taskQueue:      queue,
 		stopWorker:     stopWorker,
 	}

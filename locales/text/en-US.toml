@@ -14,6 +14,7 @@ generic.preset.speaking_rate = "Speaking Rate"
 generic.tts.ready = "Text-to-Speech Ready"
 generic.tts.channel_to_read = "Channel to Read"
 generic.tts.voice_channel = "Voice Channel"
+generic.tts.end = "Text-to-Speech Ended"
 generic.tts.thanks = "Thanks for using the bot!"
 
 commands.generic.error_not_in_guild = "You must use this command in a guild"

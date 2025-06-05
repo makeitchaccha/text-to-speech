@@ -14,6 +14,7 @@ generic.preset.speaking_rate = "発話速度"
 generic.tts.ready = "読み上げ準備完了"
 generic.tts.channel_to_read = "読み上げチャンネル"
 generic.tts.voice_channel = "ボイスチャンネル"
+generic.tts.end = "読み上げ終了"
 generic.tts.thanks = "ご利用ありがとうございました！"
 
 commands.generic.error_not_in_guild = "このコマンドはサーバー内でのみ使用できます"

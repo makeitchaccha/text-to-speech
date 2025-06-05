@@ -46,13 +46,14 @@ func LeaveHandler(manager *session.Router, trs *i18n.TextResources) handler.Comm
 				Build())
 		}
 
-		session.Close(e.Ctx)
-		manager.Delete(*voiceChannelID)
-
+		// to prevent deadlock, close the session in a separate goroutine
+		go func() {
+			session.Close(e.Ctx)
+			manager.Delete(*voiceChannelID)
+		}()
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
-			AddEmbeds(message.BuildSuccessEmbed(tr).
-				SetDescription(tr.Generic.TTS.Thanks).
-				Build()).
+			AddEmbeds(message.BuildLeaveEmbed(tr).Build()).
 			Build())
+
 	}
 }

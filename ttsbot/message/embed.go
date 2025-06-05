@@ -37,6 +37,13 @@ func BuildJoinEmbed(tr i18n.TextResource, channelToRead, voiceChannel string) *d
 		SetColor(colorInfo)
 }
 
+func BuildLeaveEmbed(tr i18n.TextResource) *discord.EmbedBuilder {
+	return discord.NewEmbedBuilder().
+		SetTitle(tr.Generic.TTS.End).
+		SetDescription(tr.Generic.TTS.Thanks).
+		SetColor(colorInfo)
+}
+
 func BuildSuccessEmbed(tr i18n.TextResource) *discord.EmbedBuilder {
 	return discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Success).

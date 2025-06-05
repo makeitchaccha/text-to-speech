@@ -25,6 +25,7 @@ type TextResource struct {
 			Ready         string `toml:"ready"`           // format: "Text-to-Speech Ready"
 			ChannelToRead string `toml:"channel_to_read"` // format: "Channel to Read"
 			VoiceChannel  string `toml:"voice_channel"`   // format: "Voice Channel"
+			End           string `toml:"end"`             // format: "Text-to-Speech Ended"
 			Thanks        string `toml:"thanks"`          // format: "Thank you for using the Text-to-Speech service!"
 		} `toml:"tts"`
 	} `toml:"generic"`
