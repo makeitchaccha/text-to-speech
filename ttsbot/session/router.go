@@ -102,10 +102,13 @@ func (m *Router) handleLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) {
 			defer cancel()
 			session.Close(ctx)
 			m.Delete(*event.OldVoiceState.ChannelID)
-			event.Client().Rest().CreateMessage(session.textChannelID, discord.NewMessageCreateBuilder().
+			_, err := event.Client().Rest().CreateMessage(session.textChannelID, discord.NewMessageCreateBuilder().
 				AddEmbeds(message.BuildLeaveEmbed(*session.textResource).Build()).
 				Build(),
 			)
+			if err != nil {
+				event.Client().Logger().Error("Failed to send leave message", "error", err, "textChannelID", session.textChannelID)
+			}
 		}
 	}
 }
