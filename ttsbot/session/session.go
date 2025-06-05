@@ -246,9 +246,6 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 
 	segments := make([]string, 0)
 	segments = append(segments, content)
-	if nAttachment := len(event.Message.Attachments); nAttachment > 0 {
-		segments = append(segments, fmt.Sprintf("%d attachments", nAttachment))
-	}
 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -258,6 +255,21 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 			slog.Error("Failed to resolve preset", slog.Any("err", err), slog.String("content", content))
 			return
 		}
+
+		segments = func() []string {
+			attachmentsCount := len(event.Message.Attachments)
+			if attachmentsCount == 0 {
+				return segments
+			}
+			vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+			if !ok {
+				slog.Warn("Voice resources not found for locale", "locale", preset.Language)
+				return segments
+			}
+			// append the number of attachments to the segments
+			attachmentsMessage := fmt.Sprintf(vr.Session.Attachments, attachmentsCount)
+			return append(segments, attachmentsMessage)
+		}()
 
 		s.enqueueSpeechTask(ctx, segments, preset, withSpeaker(event.Message.Author.ID, member.EffectiveName()))
 		slog.Info("Enqueued speech task", "content", content, "preset", preset.Identifier)
