@@ -96,7 +96,6 @@ func (w *audioWorkerImpl) Start() error {
 func (w *audioWorkerImpl) Stop() error {
 	slog.Info("Stopping AudioWorker")
 	close(w.stopWorker)
-	close(w.taskQueue)
 	if w.trackPlayer != nil {
 		w.trackPlayer.Close()
 	}
