@@ -250,6 +250,7 @@ func processPresetCommand(e *handler.CommandEvent, presetRegistry *preset.Preset
 		slog.Error("failed to get localization for locale", "locale", e.Locale())
 		tr = trs.GetFallback()
 	}
+
 	switch *data.SubCommandName {
 	case "list":
 		presets := presetRegistry.List()

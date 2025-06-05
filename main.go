@@ -39,6 +39,11 @@ func main() {
 		slog.Error("Failed to load text resources", slog.Any("err", err))
 		os.Exit(-1)
 	}
+	vrs, err := localization.LoadVoiceResources("./locales/voice/")
+	if err != nil {
+		slog.Error("Failed to load voice resources", slog.Any("err", err))
+		os.Exit(-1)
+	}
 
 	shouldSyncCommands := flag.Bool("sync-commands", false, "Whether to sync commands to discord")
 	path := flag.String("config", "config.toml", "path to config")
@@ -108,7 +113,7 @@ func main() {
 	}
 
 	h := handler.New()
-	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager, trs))
+	h.Command("/join", commands.JoinHandler(engineRegistry, presetResolver, sessionManager, trs, vrs))
 	if err != nil {
 		slog.Error("Failed to create join autocomplete handler", slog.Any("err", err))
 		os.Exit(-1)

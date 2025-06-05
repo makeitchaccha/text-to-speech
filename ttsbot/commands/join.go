@@ -26,7 +26,7 @@ func joinCmd(trs *localization.TextResources) discord.SlashCommandCreate {
 	}
 }
 
-func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router, trs *localization.TextResources) handler.CommandHandler {
+func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router, trs *localization.TextResources, vrs *localization.VoiceResources) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
 		tr, ok := trs.Get(e.Locale())
 		if !ok {
@@ -121,7 +121,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 			textChannel := e.Channel().ID()
 
-			session, err := session.New(engineRegistry, presetResolver, textChannel, conn)
+			session, err := session.New(engineRegistry, presetResolver, textChannel, conn, vrs)
 			if err != nil {
 				slog.Error("Failed to create session", slog.Any("err", err), slog.String("textChannelID", textChannel.String()))
 				e.UpdateInteractionResponse(discord.NewMessageUpdateBuilder().
