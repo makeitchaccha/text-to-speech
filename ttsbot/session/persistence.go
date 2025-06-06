@@ -94,7 +94,7 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := p.redisClient.Set(ctx, key.generateKey(), session, p.ttl()).Err(); err != nil {
+		if err := p.redisClient.Set(ctx, key.generateKey(), &session, p.ttl()).Err(); err != nil {
 			slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
 		}
 	}()
@@ -112,10 +112,10 @@ func (p *persistenceManagerImpl) StartHeartbeatLoop() {
 	ttl := p.ttl()
 	go func() {
 		for range ticker.C {
-			for key, readingChannelID := range p.persistentSessions {
+			for key, session := range p.persistentSessions {
 				sessionKey := key.generateKey()
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				if err := p.redisClient.Set(ctx, sessionKey, readingChannelID, ttl).Err(); err != nil {
+				if err := p.redisClient.Set(ctx, sessionKey, &session, ttl).Err(); err != nil {
 					slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", sessionKey), slog.Any("error", err))
 					cancel()
 					continue
