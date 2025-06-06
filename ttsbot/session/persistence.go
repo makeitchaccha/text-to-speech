@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"encoding"
+	"encoding/binary"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,7 +14,7 @@ import (
 
 type (
 	PersistenceManager interface {
-		Save(guildID, voiceChannelID, readingChannelID snowflake.ID) error
+		Save(guildID, voiceChannelID, readingChannelID snowflake.ID)
 		Delete(guildID, voiceChannelID snowflake.ID)
 		StartHeartbeatLoop()
 
@@ -47,6 +49,28 @@ type persistentSession struct {
 	readingChannelID snowflake.ID
 }
 
+var _ encoding.BinaryMarshaler = (*persistentSession)(nil)
+var _ encoding.BinaryUnmarshaler = (*persistentSession)(nil)
+
+func (s *persistentSession) MarshalBinary() ([]byte, error) {
+	// marshal with binary encoding
+	data := make([]byte, 8+8+8) // 3 snowflake IDs, each 8 bytes
+	binary.BigEndian.PutUint64(data[0:8], uint64(s.guildID))
+	binary.BigEndian.PutUint64(data[8:16], uint64(s.voiceChannelID))
+	binary.BigEndian.PutUint64(data[16:24], uint64(s.readingChannelID))
+	return data, nil
+}
+
+func (s *persistentSession) UnmarshalBinary(data []byte) error {
+	if len(data) != 24 {
+		return fmt.Errorf("invalid data length: expected 24 bytes, got %d", len(data))
+	}
+	s.guildID = snowflake.ID(binary.BigEndian.Uint64(data[0:8]))
+	s.voiceChannelID = snowflake.ID(binary.BigEndian.Uint64(data[8:16]))
+	s.readingChannelID = snowflake.ID(binary.BigEndian.Uint64(data[16:24]))
+	return nil
+}
+
 func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
@@ -55,7 +79,7 @@ func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Dura
 	}
 }
 
-func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID snowflake.ID) error {
+func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID snowflake.ID) {
 	key := sessionID{
 		guildID:        guildID,
 		voiceChannelID: voiceChannelID,
@@ -74,7 +98,7 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 			slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
 		}
 	}()
-	return nil
+	return
 }
 
 func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
