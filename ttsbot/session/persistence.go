@@ -147,14 +147,19 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 				// just ignore this session if it cannot be retrieved
 				continue
 			}
-			s, err := sessionRestoreFunc(session.guildID, session.voiceChannelID, session.readingChannelID)
-			if err != nil {
-				slog.Error("Failed to restore session", slog.Any("session", session), slog.Any("error", err))
-				// continue to the next session if restoration fails
-				continue
-			}
-			sessionManager.Add(session.guildID, session.voiceChannelID, session.readingChannelID, s)
-			slog.Info("Restored session from Redis", "session", session)
+
+			// conn.Open() blocks until the voice state update event is received...
+			// so we need to restore the session in a separate goroutine
+			go func() {
+				s, err := sessionRestoreFunc(session.guildID, session.voiceChannelID, session.readingChannelID)
+				if err != nil {
+					slog.Error("Failed to restore session", slog.Any("session", session), slog.Any("error", err))
+					return
+				}
+				sessionManager.Add(session.guildID, session.voiceChannelID, session.readingChannelID, s)
+				slog.Info("Restored session from Redis", "session", session)
+			}()
+
 		}
 		cursor = nextCursor
 	}
