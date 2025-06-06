@@ -28,6 +28,7 @@ type TextResource struct {
 			End           string `toml:"end"`             // format: "Text-to-Speech Ended"
 			Thanks        string `toml:"thanks"`          // format: "Thank you for using the Text-to-Speech service!"
 		} `toml:"tts"`
+		Engines map[string]string `toml:"engines"` // format: "engine_name": "Engine Display Name"
 	} `toml:"generic"`
 	Commands struct {
 		Generic struct {

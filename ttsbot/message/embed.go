@@ -18,8 +18,10 @@ func BuildPresetEmbed(preset preset.Preset, tr i18n.TextResource) *discord.Embed
 	embedBuilder := discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Preset.Self).
 		AddField(tr.Generic.Preset.Name, string(preset.Identifier), true).
-		AddField(tr.Generic.Preset.Engine, preset.Engine, true).
+		AddField(" ", " ", true). // dummy field for alignment
 		AddField(tr.Generic.Preset.Language, preset.Language, true).
+		AddField(tr.Generic.Preset.Engine, tr.Generic.Engines[preset.Engine], true).
+		AddField(" ", " ", true). // dummy field for alignment
 		AddField(tr.Generic.Preset.VoiceName, preset.VoiceName, true)
 
 	if preset.SpeakingRate != 0 {
@@ -59,14 +61,20 @@ func BuildErrorEmbed(tr i18n.TextResource) *discord.EmbedBuilder {
 func BuildPresetListEmbed(presets []preset.Preset, tr i18n.TextResource) *discord.EmbedBuilder {
 	embedBuilder := discord.NewEmbedBuilder().
 		SetTitle(tr.Generic.Preset.List).
+		SetDescription(fmt.Sprintf("### %s\n1. %s\n2. %s\n3. %s",
+			tr.Generic.Preset.Name,
+			tr.Generic.Preset.Engine,
+			tr.Generic.Preset.Language,
+			tr.Generic.Preset.VoiceName,
+		)).
 		SetColor(colorInfo)
 
 	for _, p := range presets {
 		embedBuilder.AddField(string(p.Identifier), fmt.Sprintf(
-			"%s - %s\n%s - %s\n%s - %s",
-			tr.Generic.Preset.Engine, p.Engine,
-			tr.Generic.Preset.Language, p.Language,
-			tr.Generic.Preset.VoiceName, p.VoiceName,
+			"1. %s\n2. %s\n3. %s",
+			tr.Generic.Engines[p.Engine],
+			p.Language,
+			p.VoiceName,
 		), true)
 	}
 
