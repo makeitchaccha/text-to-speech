@@ -159,7 +159,6 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 				sessionManager.Add(session.guildID, session.voiceChannelID, session.readingChannelID, s)
 				slog.Info("Restored session from Redis", "session", session)
 			}()
-
 		}
 		cursor = nextCursor
 	}
