@@ -12,7 +12,9 @@ import (
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
 	"github.com/disgoorg/disgo/bot"
+	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/handler"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/glebarez/sqlite"
 	"github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
@@ -62,10 +64,9 @@ func main() {
 	slog.Info("Syncing commands", slog.Bool("sync", *shouldSyncCommands))
 
 	b := ttsbot.New(*cfg, Version, Commit)
-	sessionManager := session.NewRouter()
 
-	engineRegistry := tts.NewEngineRegistry()
 	opts := make([]engineOpt, 0)
+	var persistenceManager session.PersistenceManager
 	if cfg.Redis.Enabled {
 		slog.Info("Connecting to Redis", slog.String("url", cfg.Redis.Url))
 		option, err := redis.ParseURL(cfg.Redis.Url)
@@ -80,11 +81,17 @@ func main() {
 			os.Exit(-1)
 		}
 		slog.Info("Connected to Redis", slog.String("url", cfg.Redis.Url))
+
+		persistenceManager = session.NewPersistenceManager(redisClient)
 		opts = append(opts, withCache(cache.New(&cache.Options{
 			Redis:      redisClient,
 			LocalCache: cache.NewTinyLFU(10, 5*time.Minute),
 		}), cfg.Redis.TTL))
 	}
+
+	sessionManager := session.NewSessionManager(persistenceManager)
+
+	engineRegistry := tts.NewEngineRegistry()
 	registerDefaultEngines(engineRegistry, opts...)
 
 	presetRegistry := preset.NewPresetRegistry()
@@ -122,7 +129,37 @@ func main() {
 	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
-	if err = b.SetupBot(h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()); err != nil {
+	listeners := []bot.EventListener{h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()}
+
+	if cfg.Redis.Enabled {
+		listeners = append(listeners, bot.NewListenerFunc(func(r *events.Ready) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			persistenceManager.Restore(ctx, sessionManager, func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*session.Session, error) {
+				conn := r.Client().VoiceManager().GetConn(guildID)
+				if conn == nil {
+					conn = r.Client().VoiceManager().CreateConn(guildID)
+				}
+
+				err := conn.Open(ctx, voiceChannelID, false, true)
+				if err != nil {
+					slog.Error("Failed to open voice connection", slog.Any("err", err), slog.String("guildID", guildID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
+					return nil, err
+				}
+
+				session, err := session.New(engineRegistry, presetResolver, readingChannelID, conn, trs, vrs)
+				if err != nil {
+					slog.Error("Failed to create session from persistence", slog.Any("err", err), slog.String("readingChannelID", readingChannelID.String()))
+					return nil, err
+				}
+
+				slog.Info("Restored session from persistence", slog.String("readingChannelID", readingChannelID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
+				return session, nil
+			})
+		}))
+	}
+
+	if err = b.SetupBot(listeners...); err != nil {
 		slog.Error("Failed to setup bot", slog.Any("err", err))
 		os.Exit(-1)
 	}

@@ -25,7 +25,7 @@ func joinCmd(trs *i18n.TextResources) discord.SlashCommandCreate {
 	}
 }
 
-func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager *session.Router, trs *i18n.TextResources, vrs *i18n.VoiceResources) handler.CommandHandler {
+func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, manager session.SessionManager, trs *i18n.TextResources, vrs *i18n.VoiceResources) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
 		tr, ok := trs.Get(e.Locale())
 		if !ok {
@@ -105,7 +105,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 			}
 
 			slog.Info("Session created", "textChannelID", textChannel, "voiceChannelID", voiceChannelID)
-			manager.Add(*voiceChannelID, textChannel, session)
+			manager.Add(guildID, *voiceChannelID, textChannel, session)
 		}()
 
 		return nil

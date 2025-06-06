@@ -21,7 +21,7 @@ func leaveCmd(trs *i18n.TextResources) discord.SlashCommandCreate {
 	}
 }
 
-func LeaveHandler(manager *session.Router, trs *i18n.TextResources) handler.CommandHandler {
+func LeaveHandler(manager session.SessionManager, trs *i18n.TextResources) handler.CommandHandler {
 	return func(e *handler.CommandEvent) error {
 		tr, ok := trs.Get(e.Locale())
 		if !ok {
@@ -36,6 +36,7 @@ func LeaveHandler(manager *session.Router, trs *i18n.TextResources) handler.Comm
 			return e.CreateMessage(friendlyErr.Message())
 		}
 
+		guildID := *e.GuildID()
 		session, ok := manager.GetByVoiceChannel(*voiceChannelID)
 		if !ok {
 			slog.Warn("No active session found for voice channel", "channelID", *voiceChannelID)
@@ -49,7 +50,7 @@ func LeaveHandler(manager *session.Router, trs *i18n.TextResources) handler.Comm
 		// to prevent deadlock, close the session in a separate goroutine
 		go func() {
 			session.Close(e.Ctx)
-			manager.Delete(*voiceChannelID)
+			manager.Delete(guildID, *voiceChannelID)
 		}()
 		return e.CreateMessage(discord.NewMessageCreateBuilder().
 			AddEmbeds(message.BuildLeaveEmbed(tr).Build()).
