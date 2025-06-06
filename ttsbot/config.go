@@ -46,6 +46,8 @@ type Config struct {
 	Presets  map[string]PresetConfig `toml:"presets"`
 	Database DatabaseConfig          `toml:"database"`
 	Redis    RedisConfig             `toml:"redis"`
+	Google   GoogleConfig            `toml:"google"`
+	Azure    AzureConfig             `toml:"azure"`
 }
 
 type BotConfig struct {
@@ -77,4 +79,14 @@ type RedisConfig struct {
 	Enabled bool          `toml:"enabled"`
 	Url     string        `toml:"url"`
 	TTL     time.Duration `toml:"ttl"`
+}
+
+type GoogleConfig struct {
+	Enabled bool `toml:"enable"`
+}
+
+type AzureConfig struct {
+	Enabled         bool   `toml:"enable"`
+	SubscriptionKey string `toml:"subscription_key"`
+	Region          string `toml:"region"`
 }

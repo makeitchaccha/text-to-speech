@@ -23,6 +23,7 @@ fallback_preset_id = "wavenet-A-woman"
 # the values here are used to configure the text-to-speech.
 # you can find the list of available voices here:
 #  engine = "google" -> https://cloud.google.com/text-to-speech/docs/voices
+#  engine = "azure" -> https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#text-to-speech
 [presets.wavenet-A-woman]
 engine = "google"
 language = "ja-JP"
@@ -66,3 +67,15 @@ url = "redis://localhost:6379"
 # note: int values are interpreted as nanoseconds -> see here: https://pkg.go.dev/github.com/BurntSushi/toml#Decoder
 #       string values are interpreted as duration strings like "3600s" for 1 hour -> see here: https://pkg.go.dev/time#ParseDuration
 ttl = "1h"
+
+[google]
+# whether to enable Google Cloud Text-to-Speech
+enable = true
+
+[azure]
+# whether to enable Azure Speech Service
+enable = false
+# the Azure Speech Service subscription key
+subscription_key = "..."
+# the Azure Speech Service region
+region = "..."

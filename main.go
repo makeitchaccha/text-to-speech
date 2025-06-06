@@ -11,6 +11,7 @@ import (
 	"time"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"github.com/Microsoft/cognitive-services-speech-sdk-go/speech"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/handler"
 	"github.com/glebarez/sqlite"
@@ -85,7 +86,7 @@ func main() {
 			LocalCache: cache.NewTinyLFU(10, 5*time.Minute),
 		}), cfg.Redis.TTL))
 	}
-	registerDefaultEngines(engineRegistry, opts...)
+	registerDefaultEngines(cfg, engineRegistry, opts...)
 
 	presetRegistry := preset.NewPresetRegistry()
 	for identifier, presetConfig := range cfg.Presets {
@@ -188,15 +189,36 @@ func applyEngineOpts(engine tts.Engine, opts ...engineOpt) tts.Engine {
 	return engine
 }
 
-func registerDefaultEngines(registry *tts.EngineRegistry, opts ...engineOpt) error {
-	googleEngine, err := prepareGoogleTTSEngine()
-	if err != nil {
-		slog.Error("Failed to prepare Google TTS engine", slog.Any("err", err))
-		return err
+func registerDefaultEngines(config *ttsbot.Config, registry *tts.EngineRegistry, opts ...engineOpt) error {
+	total := 0
+	if config.Google.Enabled {
+		googleEngine, err := prepareGoogleTTSEngine()
+		if err != nil {
+			slog.Error("Failed to prepare Google TTS engine", slog.Any("err", err))
+			return err
+		}
+
+		registry.Register("google", applyEngineOpts(googleEngine, opts...))
+		slog.Info("Registered Google TTS engine")
+		total++
 	}
 
-	registry.Register("google", applyEngineOpts(googleEngine, opts...))
-	slog.Info("Default TTS engines registered")
+	if config.Azure.Enabled {
+		azureEngine, err := prepareAzureTTSEngine(config.Azure)
+		if err != nil {
+			slog.Error("Failed to prepare Azure TTS engine", slog.Any("err", err))
+			return err
+		}
+		registry.Register("azure", applyEngineOpts(azureEngine, opts...))
+		slog.Info("Registered Azure TTS engine")
+		total++
+	}
+
+	if total == 0 {
+		return fmt.Errorf("no TTS engines registered, please enable at least one engine in the config")
+	}
+
+	slog.Info("Total TTS engines registered", slog.Int("count", total))
 	return nil
 }
 
@@ -209,6 +231,23 @@ func prepareGoogleTTSEngine() (tts.Engine, error) {
 	}
 
 	return tts.NewGoogleTTSEngine(ttsClient), nil
+}
+
+func prepareAzureTTSEngine(cfg ttsbot.AzureConfig) (tts.Engine, error) {
+	if cfg.SubscriptionKey == "" || cfg.Region == "" {
+		return nil, fmt.Errorf("Azure TTS engine requires subscription key and region to be set")
+	}
+
+	speechConfig, err := speech.NewSpeechConfigFromSubscription(cfg.SubscriptionKey, cfg.Region)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure SpeechConfig: %w", err)
+	}
+	engine, err := tts.NewAzureTTSEngine(speechConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure TTS engine: %w", err)
+	}
+
+	return engine, nil
 }
 
 func registerPreset(engineRegistry *tts.EngineRegistry, presetRegistry *preset.PresetRegistry, identifier string, presetConfig ttsbot.PresetConfig) error {
