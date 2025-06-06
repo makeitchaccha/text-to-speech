@@ -147,7 +147,10 @@ func main() {
 					return nil, err
 				}
 
-				session, err := session.New(engineRegistry, presetResolver, readingChannelID, conn, trs, vrs)
+				// we may not use fallback but there is no way to get the text resource from the session currently.
+				// however, it is just fallback, so it does not matter much.
+				tr := trs.GetFallback()
+				session, err := session.New(engineRegistry, presetResolver, readingChannelID, conn, &tr, vrs)
 				if err != nil {
 					slog.Error("Failed to create session from persistence", slog.Any("err", err), slog.String("readingChannelID", readingChannelID.String()))
 					return nil, err
