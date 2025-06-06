@@ -68,6 +68,11 @@ jobs:
             }
           skip-extraction: ${{ steps.go-build-cache.outputs.cache-hit }}
 
+      - name: Get short SHA
+        id: sha
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c 1-7)
+          echo "short=$SHORT_SHA" >> $GITHUB_OUTPUT
       - name: Build and push
         id: build
         uses: docker/build-push-action@v5
@@ -76,7 +81,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
-            COMMIT=${{ github.sha }}
+            COMMIT=${{ steps.sha.outputs.short }}
           cache-from: type=gha,scope=${{ matrix.cache_scope }}
           cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}
           labels: ${{ steps.meta.outputs.labels }}
