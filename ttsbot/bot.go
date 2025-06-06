@@ -55,7 +55,7 @@ func (b *Bot) OnReady(_ *events.Ready) {
 	slog.Info("bot ready")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := b.Client.SetPresence(ctx, gateway.WithListeningActivity("you"), gateway.WithOnlineStatus(discord.OnlineStatusOnline)); err != nil {
+	if err := b.Client.SetPresence(ctx, gateway.WithPlayingActivity("text-to-speech"), gateway.WithOnlineStatus(discord.OnlineStatusOnline)); err != nil {
 		slog.Error("Failed to set presence", slog.Any("err", err))
 	}
 }
