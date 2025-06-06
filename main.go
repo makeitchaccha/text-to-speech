@@ -82,8 +82,8 @@ func main() {
 		}
 		slog.Info("Connected to Redis", slog.String("url", cfg.Redis.Url))
 
-		persistenceManager = session.NewPersistenceManager(redisClient)
-		persistenceManager.StartHeartbeatLoop(30 * time.Second)
+		persistenceManager = session.NewPersistenceManager(redisClient, 30*time.Second)
+		persistenceManager.StartHeartbeatLoop()
 		opts = append(opts, withCache(cache.New(&cache.Options{
 			Redis:      redisClient,
 			LocalCache: cache.NewTinyLFU(10, 5*time.Minute),

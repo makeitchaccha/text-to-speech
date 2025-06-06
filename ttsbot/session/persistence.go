@@ -14,7 +14,7 @@ type (
 	PersistenceManager interface {
 		Save(guildID, voiceChannelID, readingChannelID snowflake.ID) error
 		Delete(guildID, voiceChannelID snowflake.ID)
-		StartHeartbeatLoop(interval time.Duration)
+		StartHeartbeatLoop()
 
 		// Restore restores a session from persistent store.
 		Restore(ctx context.Context, sessionManager SessionManager, sessionRestoreFunc SessionRestoreFunc) error
@@ -26,6 +26,7 @@ type (
 type persistenceManagerImpl struct {
 	redisClient        *redis.Client
 	persistentSessions map[sessionID]persistentSession // guildID:voiceChannelID -> readingChannelID
+	heatbeatInterval   time.Duration
 }
 
 const (
@@ -46,10 +47,11 @@ type persistentSession struct {
 	readingChannelID snowflake.ID
 }
 
-func NewPersistenceManager(redisClient *redis.Client) PersistenceManager {
+func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
 		persistentSessions: make(map[sessionID]persistentSession),
+		heatbeatInterval:   heatbeatInterval,
 	}
 }
 
@@ -59,10 +61,19 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 		voiceChannelID: voiceChannelID,
 	}
 
-	p.persistentSessions[key] = persistentSession{
+	session := persistentSession{
 		sessionID:        key,
 		readingChannelID: readingChannelID,
 	}
+	p.persistentSessions[key] = session
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := p.redisClient.Set(ctx, key.generateKey(), session, p.ttl()).Err(); err != nil {
+			slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
+		}
+	}()
 	return nil
 }
 
@@ -73,9 +84,9 @@ func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 	})
 }
 
-func (p *persistenceManagerImpl) StartHeartbeatLoop(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	ttl := interval * 2 // Set TTL to twice the heartbeat interval
+func (p *persistenceManagerImpl) StartHeartbeatLoop() {
+	ticker := time.NewTicker(p.heatbeatInterval)
+	ttl := p.ttl()
 	go func() {
 		for range ticker.C {
 			for key, readingChannelID := range p.persistentSessions {
@@ -120,4 +131,8 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 	}
 
 	return nil
+}
+
+func (p *persistenceManagerImpl) ttl() time.Duration {
+	return p.heatbeatInterval * 3
 }
