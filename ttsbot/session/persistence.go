@@ -98,7 +98,6 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 			slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
 		}
 	}()
-	return
 }
 
 func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
