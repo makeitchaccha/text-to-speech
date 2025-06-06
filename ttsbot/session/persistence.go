@@ -28,7 +28,7 @@ type (
 type persistenceManagerImpl struct {
 	redisClient        *redis.Client
 	persistentSessions map[sessionID]persistentSession // guildID:voiceChannelID -> readingChannelID
-	heatbeatInterval   time.Duration
+	heartbeatInterval  time.Duration
 }
 
 const (
@@ -75,7 +75,7 @@ func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Dura
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
 		persistentSessions: make(map[sessionID]persistentSession),
-		heatbeatInterval:   heatbeatInterval,
+		heartbeatInterval:  heatbeatInterval,
 	}
 }
 
@@ -108,7 +108,7 @@ func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 }
 
 func (p *persistenceManagerImpl) StartHeartbeatLoop() {
-	ticker := time.NewTicker(p.heatbeatInterval)
+	ticker := time.NewTicker(p.heartbeatInterval)
 	ttl := p.ttl()
 	go func() {
 		for range ticker.C {
@@ -167,5 +167,5 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 }
 
 func (p *persistenceManagerImpl) ttl() time.Duration {
-	return p.heatbeatInterval * 3
+	return p.heartbeatInterval * 3
 }
