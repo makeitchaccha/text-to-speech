@@ -147,7 +147,13 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 				// just ignore this session if it cannot be retrieved
 				continue
 			}
-			p.persistentSessions[session.sessionID] = session
+			s, err := sessionRestoreFunc(session.guildID, session.voiceChannelID, session.readingChannelID)
+			if err != nil {
+				slog.Error("Failed to restore session", slog.Any("session", session), slog.Any("error", err))
+				// continue to the next session if restoration fails
+				continue
+			}
+			sessionManager.Add(session.guildID, session.voiceChannelID, session.readingChannelID, s)
 			slog.Info("Restored session from Redis", "session", session)
 		}
 		cursor = nextCursor
