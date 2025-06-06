@@ -74,7 +74,9 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          build-args: VERSION=${{ steps.meta.outputs.version }},COMMIT=${{ github.sha }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.cache_scope }}
           cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}
           labels: ${{ steps.meta.outputs.labels }}
