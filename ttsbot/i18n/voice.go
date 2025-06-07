@@ -1,11 +1,7 @@
 package i18n
 
-import (
-	"github.com/disgoorg/disgo/discord"
-)
-
 type VoiceResources struct {
-	genericResources[discord.Locale, VoiceResource]
+	genericResources[string, VoiceResource]
 }
 
 type VoiceResource struct {
@@ -19,7 +15,7 @@ type VoiceResource struct {
 
 func LoadVoiceResources(directory string) (*VoiceResources, error) {
 	resources := &VoiceResources{
-		genericResources: make(genericResources[discord.Locale, VoiceResource]),
+		genericResources: make(genericResources[string, VoiceResource]),
 	}
 
 	if err := load(directory, resources.genericResources); err != nil {

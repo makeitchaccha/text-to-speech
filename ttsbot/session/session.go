@@ -66,7 +66,7 @@ func New(engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolve
 			return
 		}
 
-		vr, ok := vrs.GetOrGeneric(discord.Locale(preset.Language))
+		vr, ok := vrs.GetOrGeneric(preset.Language)
 		if !ok {
 			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 			return
@@ -230,7 +230,7 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 			if attachmentsCount == 0 {
 				return segments
 			}
-			vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+			vr, ok := s.voiceResources.GetOrGeneric(preset.Language)
 			if !ok {
 				slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 				return segments
@@ -277,7 +277,7 @@ func (s *Session) onJoinVoiceChannel(event *events.GuildVoiceStateUpdate) {
 			return
 		}
 
-		vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+		vr, ok := s.voiceResources.GetOrGeneric(preset.Language)
 		if !ok {
 			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 			return
@@ -311,7 +311,7 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 			return
 		}
 
-		vr, ok := s.voiceResources.GetOrGeneric(discord.Locale(preset.Language))
+		vr, ok := s.voiceResources.GetOrGeneric(preset.Language)
 		if !ok {
 			slog.Warn("Voice resources not found for locale", "locale", preset.Language)
 			return
