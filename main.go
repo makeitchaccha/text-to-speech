@@ -87,7 +87,7 @@ func main() {
 
 		readyChan := make(chan *events.Ready)
 		id, err := func() (string, error) {
-			tempClient, err := disgo.New(cfg.Bot.Token, bot.WithEventListenerChan(readyChan))
+			tempClient, err := disgo.New(cfg.Bot.Token, bot.WithDefaultGateway(), bot.WithEventListenerChan(readyChan))
 			if err != nil {
 				slog.Error("Failed to create temporary bot client", slog.Any("err", err))
 				return "", fmt.Errorf("failed to create temporary bot client: %w", err)
