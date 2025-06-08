@@ -173,6 +173,12 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 				continue
 			}
 
+			if session.applicationID != p.applicationID {
+				slog.Debug("Skipping session from different application ID", slog.Any("session", session), slog.Any("applicationID", p.applicationID))
+				// skip sessions that are not from this application ID
+				continue
+			}
+
 			// conn.Open() blocks until the voice state update event is received...
 			// so we need to restore the session in a separate goroutine
 			go func() {
