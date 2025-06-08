@@ -79,6 +79,7 @@ func (s *persistentSession) UnmarshalBinary(data []byte) error {
 func NewPersistenceManager(identifier string, redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
+		identifier:         identifier,
 		persistentSessions: make(map[sessionID]persistentSession),
 		heartbeatInterval:  heatbeatInterval,
 	}
