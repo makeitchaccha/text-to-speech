@@ -112,6 +112,19 @@ func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 		identifier:     p.identifier,
 		voiceChannelID: voiceChannelID,
 	})
+
+	// delete the session from Redis
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := p.redisClient.Del(ctx, sessionID{
+			identifier:     p.identifier,
+			voiceChannelID: voiceChannelID,
+		}.generateKey()).Err(); err != nil {
+			slog.Error("Failed to delete session from Redis", slog.Any("sessionKey", voiceChannelID), slog.Any("error", err))
+		}
+		slog.Debug("Deleted session from Redis", slog.Any("voiceChannelID", voiceChannelID))
+	}()
 }
 
 func (p *persistenceManagerImpl) StartHeartbeatLoop() {
