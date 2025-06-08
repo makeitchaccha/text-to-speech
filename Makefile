@@ -20,6 +20,9 @@ build: vet
 test:
 	go test -v ./...
 
+test-coverage:
+	go test -cover ./...
+
 GOOSE_DIR := migrations
 
 goose-up:

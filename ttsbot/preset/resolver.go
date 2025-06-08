@@ -9,8 +9,20 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 )
 
+// PresetResolver defines the interface for resolving presets based on user and guild IDs.
 type PresetResolver interface {
+	// Resolve returns the preset for the given guild and user.
+	// Resolve tries to find a preset in the following order:
+	// 1. User-specific preset (ScopeUser).
+	// 2. Guild-specific preset (ScopeGuild).
+	// 3. If no user or guild preset is found, it returns the fallback preset.
 	Resolve(ctx context.Context, guildID, userID snowflake.ID) (Preset, error)
+
+	// ResolveGuildPreset returns the preset for the given guild.
+	// It is similar to Resolve but does not consider user-specific presets.
+	// Thus, it only looks for:
+	// 1. Guild-specific preset (ScopeGuild).
+	// 2. If no guild preset is found, it returns the fallback preset.
 	ResolveGuildPreset(ctx context.Context, guildID snowflake.ID) (Preset, error)
 }
 
@@ -56,18 +68,20 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 	if err == nil {
 		return presetID, nil
 	}
-	if errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 
+	// If no user-specific preset is found, fall back to guild-specific preset
 	presetID, err = r.repository.Find(ctx, ScopeGuild, guildID)
 	if err == nil {
 		return presetID, nil
 	}
-	if errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 
+	// If no user or guild preset is found, return an error
 	return "", ErrNotFound
 }
 

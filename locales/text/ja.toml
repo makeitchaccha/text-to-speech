@@ -1,3 +1,6 @@
+metadata.language = "ja"
+metadata.name = "日本語"
+
 generic.guild = "サーバー"
 generic.user = "ユーザー"
 generic.success = "🎉 成功"

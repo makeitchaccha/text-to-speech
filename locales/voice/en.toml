@@ -1,3 +1,6 @@
+metadata.language = "en"
+metadata.name = "English"
+
 session.launch = "text-to-speech is ready"
 session.user_join = "%[1]s has joined the voice channel"
 session.user_leave = "%[1]s has left the voice channel"

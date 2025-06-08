@@ -1,14 +1,14 @@
 package i18n
 
-import (
-	"github.com/disgoorg/disgo/discord"
-)
-
 type VoiceResources struct {
-	genericResources[discord.Locale, VoiceResource]
+	genericResources[string, VoiceResource]
 }
 
 type VoiceResource struct {
+	Metadata struct {
+		Language string `toml:"language"` // format: "en"
+		Name     string `toml:"name"`     // format: "English"
+	} `toml:"metadata"`
 	Session struct {
 		Launch      string `toml:"launch"`      // "Ready to start text-to-speech in this channel."
 		UserJoin    string `toml:"user_join"`   // "%[1]s has joined the voice channel."
@@ -19,7 +19,7 @@ type VoiceResource struct {
 
 func LoadVoiceResources(directory string) (*VoiceResources, error) {
 	resources := &VoiceResources{
-		genericResources: make(genericResources[discord.Locale, VoiceResource]),
+		genericResources: make(genericResources[string, VoiceResource]),
 	}
 
 	if err := load(directory, resources.genericResources); err != nil {
