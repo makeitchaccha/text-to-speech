@@ -56,7 +56,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 	if err == nil {
 		return presetID, nil
 	}
-	if errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 
@@ -64,7 +64,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 	if err == nil {
 		return presetID, nil
 	}
-	if errors.Is(err, ErrNotFound) {
+	if !errors.Is(err, ErrNotFound) {
 		return "", err
 	}
 
