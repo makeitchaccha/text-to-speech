@@ -52,10 +52,6 @@ func TestValidateResource(t *testing.T) {
 			errs := validateResource(res.Resource, "Root")
 			if len(errs) != res.ExpectedErrors {
 				t.Errorf("len(errs) = %d errors, expected %d", len(errs), res.ExpectedErrors)
-			} else if len(errs) > 0 {
-				for _, e := range errs {
-					t.Logf("Validation error: %v", e)
-				}
 			}
 		})
 	}
@@ -100,10 +96,6 @@ func TestValidateResource(t *testing.T) {
 			errs := validateResource(res.Resource, "Root")
 			if len(errs) != res.ExpectedErrors {
 				t.Errorf("len(errs) = %d errors, expected %d", len(errs), res.ExpectedErrors)
-			} else if len(errs) > 0 {
-				for _, e := range errs {
-					t.Logf("Validation error: %v", e)
-				}
 			}
 		})
 	}
