@@ -11,6 +11,7 @@ import (
 	"time"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
+	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/handler"
@@ -82,7 +83,47 @@ func main() {
 		}
 		slog.Info("Connected to Redis", slog.String("url", cfg.Redis.Url))
 
-		persistenceManager = session.NewPersistenceManager(redisClient, 30*time.Second)
+		// not good way but we need to use application ID as identifier for Redis sessions...
+
+		readyChan := make(chan *events.Ready)
+		id, err := func() (snowflake.ID, error) {
+			tempClient, err := disgo.New(cfg.Bot.Token, bot.WithDefaultGateway(), bot.WithEventListenerChan(readyChan))
+			if err != nil {
+				slog.Error("Failed to create temporary bot client", slog.Any("err", err))
+				return 0, fmt.Errorf("failed to create temporary bot client: %w", err)
+			}
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				tempClient.Close(ctx)
+				slog.Info("Temporary bot client closed")
+			}()
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := tempClient.OpenGateway(ctx); err != nil {
+				slog.Error("Failed to open temporary bot client gateway", slog.Any("err", err))
+				return 0, fmt.Errorf("failed to open temporary bot client gateway: %w", err)
+			}
+			select {
+			case r := <-readyChan:
+				if r == nil {
+					slog.Error("Temporary bot client is nil")
+					return 0, fmt.Errorf("temporary bot client is nil")
+				}
+				slog.Info("Temporary bot client is ready", slog.String("applicationID", r.Client().ApplicationID().String()))
+				return r.Client().ApplicationID(), nil
+			case <-ctx.Done():
+				slog.Error("Timed out waiting for temporary bot client to be ready")
+				return 0, fmt.Errorf("timed out waiting for temporary bot client to be ready")
+			}
+		}()
+
+		if err != nil {
+			slog.Error("Failed to create temporary bot client", slog.Any("err", err))
+			os.Exit(-1)
+		}
+
+		persistenceManager = session.NewPersistenceManager(id, redisClient, 30*time.Second)
 		persistenceManager.StartHeartbeatLoop()
 		opts = append(opts, withCache(cache.New(&cache.Options{
 			Redis:      redisClient,
