@@ -14,6 +14,16 @@ type Preset struct {
 	SpeakingRate float64
 }
 
+func (p Preset) validate() error {
+	if p.Identifier == "" {
+		return fmt.Errorf("preset identifier cannot be empty")
+	}
+	if p.Engine == "" {
+		return fmt.Errorf("preset engine cannot be empty")
+	}
+	return nil
+}
+
 type PresetRegistry struct {
 	presets map[PresetID]Preset // identifier -> Preset
 	lists   []Preset
@@ -26,6 +36,10 @@ func NewPresetRegistry() *PresetRegistry {
 }
 
 func (r *PresetRegistry) Register(preset Preset) error {
+	if err := preset.validate(); err != nil {
+		return fmt.Errorf("invalid preset: %w", err)
+	}
+
 	if _, ok := r.presets[preset.Identifier]; ok {
 		return fmt.Errorf("preset already registered: %s", preset.Identifier)
 	}
