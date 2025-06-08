@@ -26,6 +26,10 @@ type (
 )
 
 type persistenceManagerImpl struct {
+	// identifier for the persistence manager in the redis store.
+	// If multiple instances of the bot are running, they should have different identifiers.
+	// recommended to use the bot's application ID but it can be any unique.
+	identifier         string
 	redisClient        *redis.Client
 	persistentSessions map[sessionID]persistentSession // guildID:voiceChannelID -> readingChannelID
 	heartbeatInterval  time.Duration
@@ -36,16 +40,17 @@ const (
 )
 
 type sessionID struct {
-	guildID        snowflake.ID
+	identifier     string
 	voiceChannelID snowflake.ID
 }
 
 func (s sessionID) generateKey() string {
-	return fmt.Sprintf(keySessionPrefix+":%d:%d", s.guildID, s.voiceChannelID)
+	return fmt.Sprintf(keySessionPrefix+":%s:%d", s.identifier, s.voiceChannelID)
 }
 
 type persistentSession struct {
-	sessionID
+	guildID          snowflake.ID
+	voiceChannelID   snowflake.ID
 	readingChannelID snowflake.ID
 }
 
@@ -71,7 +76,7 @@ func (s *persistentSession) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
+func NewPersistenceManager(identifier string, redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
 		persistentSessions: make(map[sessionID]persistentSession),
@@ -81,12 +86,13 @@ func NewPersistenceManager(redisClient *redis.Client, heatbeatInterval time.Dura
 
 func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID snowflake.ID) {
 	key := sessionID{
-		guildID:        guildID,
+		identifier:     p.identifier,
 		voiceChannelID: voiceChannelID,
 	}
 
 	session := persistentSession{
-		sessionID:        key,
+		guildID:          guildID,
+		voiceChannelID:   voiceChannelID,
 		readingChannelID: readingChannelID,
 	}
 	p.persistentSessions[key] = session
@@ -102,7 +108,7 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 
 func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 	delete(p.persistentSessions, sessionID{
-		guildID:        guildID,
+		identifier:     p.identifier,
 		voiceChannelID: voiceChannelID,
 	})
 }
