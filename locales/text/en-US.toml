@@ -1,3 +1,6 @@
+metadata.language = "en-US"
+metadata.name = "English, US"
+
 generic.guild = "guild"
 generic.user = "user"
 generic.success = "🎉 Success"

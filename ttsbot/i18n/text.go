@@ -7,6 +7,10 @@ import (
 )
 
 type TextResource struct {
+	Metadata struct {
+		Language string `toml:"language"` // format: "en-US"
+		Name     string `toml:"name"`     // format: "English, US"
+	} `toml:"metadata"`
 	Generic struct {
 		Guild   string `toml:"guild"`   // format: "guild"
 		User    string `toml:"user"`    // format: "user"

@@ -17,11 +17,14 @@ func TestLoadVoiceResources(t *testing.T) {
 
 	for locale, resource := range trs.genericResources {
 		t.Run(fmt.Sprintf("locale_%s", locale), func(t *testing.T) {
-			errs := validateResource(resource, "VoiceResource")
+			errs := verifyCompleteness(resource, "VoiceResource")
 			if len(errs) > 0 {
 				for _, e := range errs {
 					t.Error(e)
 				}
+			}
+			if resource.Metadata.Language != string(locale) {
+				t.Errorf("Expected language %s, got %s", locale, resource.Metadata.Language)
 			}
 		})
 	}

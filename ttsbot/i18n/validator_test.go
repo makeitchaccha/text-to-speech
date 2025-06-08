@@ -22,7 +22,7 @@ type testCase struct {
 	ExpectedErrors int
 }
 
-func TestValidateResource(t *testing.T) {
+func TestVerifyCompleteness(t *testing.T) {
 	validCases := []testCase{
 		{
 			Name: "Valid Resource A",
@@ -48,7 +48,7 @@ func TestValidateResource(t *testing.T) {
 
 	for _, res := range validCases {
 		t.Run(res.Name, func(t *testing.T) {
-			errs := validateResource(res.Resource, "Root")
+			errs := verifyCompleteness(res.Resource, "Root")
 			if len(errs) != res.ExpectedErrors {
 				t.Errorf("len(errs) = %d errors, expected %d", len(errs), res.ExpectedErrors)
 			}
@@ -92,7 +92,7 @@ func TestValidateResource(t *testing.T) {
 
 	for _, res := range invalidCases {
 		t.Run(res.Name, func(t *testing.T) {
-			errs := validateResource(res.Resource, "Root")
+			errs := verifyCompleteness(res.Resource, "Root")
 			if len(errs) != res.ExpectedErrors {
 				t.Errorf("len(errs) = %d errors, expected %d", len(errs), res.ExpectedErrors)
 			}

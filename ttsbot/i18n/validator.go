@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func validateResource(s interface{}, path string) []error {
+func verifyCompleteness(s interface{}, path string) []error {
 	var errs []error
 	v := reflect.ValueOf(s)
 
@@ -29,11 +29,11 @@ func validateResource(s interface{}, path string) []error {
 				errs = append(errs, fmt.Errorf("field %s is an empty string", currentPath))
 			}
 		case reflect.Struct:
-			nestedErrs := validateResource(fieldValue.Interface(), currentPath)
+			nestedErrs := verifyCompleteness(fieldValue.Interface(), currentPath)
 			errs = append(errs, nestedErrs...)
 		case reflect.Ptr:
 			if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.Struct {
-				nestedErrs := validateResource(fieldValue.Interface(), currentPath)
+				nestedErrs := verifyCompleteness(fieldValue.Interface(), currentPath)
 				errs = append(errs, nestedErrs...)
 			}
 		}

@@ -5,6 +5,10 @@ type VoiceResources struct {
 }
 
 type VoiceResource struct {
+	Metadata struct {
+		Language string `toml:"language"` // format: "en"
+		Name     string `toml:"name"`     // format: "English"
+	} `toml:"metadata"`
 	Session struct {
 		Launch      string `toml:"launch"`      // "Ready to start text-to-speech in this channel."
 		UserJoin    string `toml:"user_join"`   // "%[1]s has joined the voice channel."
