@@ -26,10 +26,10 @@ type (
 )
 
 type persistenceManagerImpl struct {
-	// identifier for the persistence manager in the redis store.
+	// applicationID for the persistence manager in the redis store.
 	// If multiple instances of the bot are running, they should have different identifiers.
 	// recommended to use the bot's application ID but it can be any unique.
-	identifier         string
+	applicationID      snowflake.ID
 	redisClient        *redis.Client
 	persistentSessions map[sessionID]persistentSession // guildID:voiceChannelID -> readingChannelID
 	heartbeatInterval  time.Duration
@@ -40,15 +40,16 @@ const (
 )
 
 type sessionID struct {
-	identifier     string
+	applicationID  snowflake.ID
 	voiceChannelID snowflake.ID
 }
 
 func (s sessionID) generateKey() string {
-	return fmt.Sprintf(keySessionPrefix+":%s:%d", s.identifier, s.voiceChannelID)
+	return fmt.Sprintf(keySessionPrefix+":%d:%d", s.applicationID, s.voiceChannelID)
 }
 
 type persistentSession struct {
+	applicationID    snowflake.ID
 	guildID          snowflake.ID
 	voiceChannelID   snowflake.ID
 	readingChannelID snowflake.ID
@@ -59,27 +60,30 @@ var _ encoding.BinaryUnmarshaler = (*persistentSession)(nil)
 
 func (s *persistentSession) MarshalBinary() ([]byte, error) {
 	// marshal with binary encoding
-	data := make([]byte, 8+8+8) // 3 snowflake IDs, each 8 bytes
-	binary.BigEndian.PutUint64(data[0:8], uint64(s.guildID))
-	binary.BigEndian.PutUint64(data[8:16], uint64(s.voiceChannelID))
-	binary.BigEndian.PutUint64(data[16:24], uint64(s.readingChannelID))
+	data := make([]byte, 8+8+8+8)
+	binary.BigEndian.PutUint64(data[0:8], uint64(s.applicationID))
+	binary.BigEndian.PutUint64(data[8:16], uint64(s.guildID))
+	binary.BigEndian.PutUint64(data[16:24], uint64(s.voiceChannelID))
+	binary.BigEndian.PutUint64(data[24:32], uint64(s.readingChannelID))
 	return data, nil
 }
 
 func (s *persistentSession) UnmarshalBinary(data []byte) error {
-	if len(data) != 24 {
-		return fmt.Errorf("invalid data length: expected 24 bytes, got %d", len(data))
+	if len(data) != 32 {
+		return fmt.Errorf("invalid data length: expected 32 bytes, got %d", len(data))
 	}
-	s.guildID = snowflake.ID(binary.BigEndian.Uint64(data[0:8]))
-	s.voiceChannelID = snowflake.ID(binary.BigEndian.Uint64(data[8:16]))
-	s.readingChannelID = snowflake.ID(binary.BigEndian.Uint64(data[16:24]))
+
+	s.applicationID = snowflake.ID(binary.BigEndian.Uint64(data[0:8]))
+	s.guildID = snowflake.ID(binary.BigEndian.Uint64(data[8:16]))
+	s.voiceChannelID = snowflake.ID(binary.BigEndian.Uint64(data[16:24]))
+	s.readingChannelID = snowflake.ID(binary.BigEndian.Uint64(data[24:32]))
 	return nil
 }
 
-func NewPersistenceManager(identifier string, redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
+func NewPersistenceManager(applicationID snowflake.ID, redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
 	return &persistenceManagerImpl{
 		redisClient:        redisClient,
-		identifier:         identifier,
+		applicationID:      applicationID,
 		persistentSessions: make(map[sessionID]persistentSession),
 		heartbeatInterval:  heatbeatInterval,
 	}
@@ -87,11 +91,12 @@ func NewPersistenceManager(identifier string, redisClient *redis.Client, heatbea
 
 func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID snowflake.ID) {
 	key := sessionID{
-		identifier:     p.identifier,
+		applicationID:  p.applicationID,
 		voiceChannelID: voiceChannelID,
 	}
 
 	session := persistentSession{
+		applicationID:    p.applicationID,
 		guildID:          guildID,
 		voiceChannelID:   voiceChannelID,
 		readingChannelID: readingChannelID,
@@ -109,7 +114,7 @@ func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID 
 
 func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 	delete(p.persistentSessions, sessionID{
-		identifier:     p.identifier,
+		applicationID:  p.applicationID,
 		voiceChannelID: voiceChannelID,
 	})
 
@@ -118,7 +123,7 @@ func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := p.redisClient.Del(ctx, sessionID{
-			identifier:     p.identifier,
+			applicationID:  p.applicationID,
 			voiceChannelID: voiceChannelID,
 		}.generateKey()).Err(); err != nil {
 			slog.Error("Failed to delete session from Redis", slog.Any("sessionKey", voiceChannelID), slog.Any("error", err))

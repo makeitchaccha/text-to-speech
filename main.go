@@ -86,11 +86,11 @@ func main() {
 		// not good way but we need to use application ID as identifier for Redis sessions...
 
 		readyChan := make(chan *events.Ready)
-		id, err := func() (string, error) {
+		id, err := func() (snowflake.ID, error) {
 			tempClient, err := disgo.New(cfg.Bot.Token, bot.WithDefaultGateway(), bot.WithEventListenerChan(readyChan))
 			if err != nil {
 				slog.Error("Failed to create temporary bot client", slog.Any("err", err))
-				return "", fmt.Errorf("failed to create temporary bot client: %w", err)
+				return 0, fmt.Errorf("failed to create temporary bot client: %w", err)
 			}
 			defer func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -102,19 +102,19 @@ func main() {
 			defer cancel()
 			if err := tempClient.OpenGateway(ctx); err != nil {
 				slog.Error("Failed to open temporary bot client gateway", slog.Any("err", err))
-				return "", fmt.Errorf("failed to open temporary bot client gateway: %w", err)
+				return 0, fmt.Errorf("failed to open temporary bot client gateway: %w", err)
 			}
 			select {
 			case r := <-readyChan:
 				if r == nil {
 					slog.Error("Temporary bot client is nil")
-					return "", fmt.Errorf("temporary bot client is nil")
+					return 0, fmt.Errorf("temporary bot client is nil")
 				}
 				slog.Info("Temporary bot client is ready", slog.String("applicationID", r.Client().ApplicationID().String()))
-				return r.Client().ApplicationID().String(), nil
+				return r.Client().ApplicationID(), nil
 			case <-ctx.Done():
 				slog.Error("Timed out waiting for temporary bot client to be ready")
-				return "", fmt.Errorf("timed out waiting for temporary bot client to be ready")
+				return 0, fmt.Errorf("timed out waiting for temporary bot client to be ready")
 			}
 		}()
 
