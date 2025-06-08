@@ -7,7 +7,6 @@ import (
 )
 
 func TestReplaceUserMentions(t *testing.T) {
-
 	type testCase struct {
 		name     string
 		content  string

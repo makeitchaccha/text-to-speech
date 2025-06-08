@@ -23,7 +23,6 @@ type testCase struct {
 }
 
 func TestValidateResource(t *testing.T) {
-
 	validCases := []testCase{
 		{
 			Name: "Valid Resource A",
@@ -99,5 +98,4 @@ func TestValidateResource(t *testing.T) {
 			}
 		})
 	}
-
 }
