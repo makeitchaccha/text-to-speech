@@ -72,6 +72,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 		return "", err
 	}
 
+	// If no user-specific preset is found, fall back to guild-specific preset
 	presetID, err = r.repository.Find(ctx, ScopeGuild, guildID)
 	if err == nil {
 		return presetID, nil
@@ -80,6 +81,7 @@ func (r *presetResolverImpl) resolveID(ctx context.Context, guildID, userID snow
 		return "", err
 	}
 
+	// If no user or guild preset is found, return an error
 	return "", ErrNotFound
 }
 
