@@ -209,6 +209,7 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 	// make the content safe and ready for TTS.
 	content := event.Message.Content
 	content = message.ReplaceUserMentions(content, mentions)
+	content = message.ReplaceEmojis(content)
 	content = message.ReplaceUrlsWithPlaceholders(content)
 	content = message.ConvertMarkdownToPlainText(content)
 	content = message.LimitContentLength(content, 300)
