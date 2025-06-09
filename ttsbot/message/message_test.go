@@ -45,6 +45,41 @@ func TestReplaceUserMentions(t *testing.T) {
 	}
 }
 
+func TestReplaceEmojis(t *testing.T) {
+	type testCase struct {
+		name     string
+		content  string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Single emoji",
+			content:  "Hello <:smile:123456789012345678>",
+			expected: "Hello smile",
+		},
+		{
+			name:     "Multiple emojis",
+			content:  "Hello <a:smile:123456789012345678> and <:wave:987654321098765432>",
+			expected: "Hello smile and wave",
+		},
+		{
+			name:     "No emojis",
+			content:  "Hello world!",
+			expected: "Hello world!",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := ReplaceEmojis(tc.content)
+			if result != tc.expected {
+				t.Errorf("ReplaceEmojis(%q) = %q, want %q", tc.content, result, tc.expected)
+			}
+		})
+	}
+}
+
 func TestConvertMarkdownToPlainText(t *testing.T) {
 	// No test because this function will be changed near future.
 	t.Skip("ConvertMarkdownToPlainText is not implemented yet")

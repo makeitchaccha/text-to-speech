@@ -12,12 +12,28 @@ import (
 var (
 	urlRegex      = regexp.MustCompile(`https?://[^\s]+`)
 	headingsRegex = regexp.MustCompile(`^ *#{1,3}`)
+	emojiRegex    = regexp.MustCompile(`<a?:(\w+):\d+>`)
 )
 
 func ReplaceUserMentions(content string, mentions map[snowflake.ID]string) string {
 	for id, name := range mentions {
 		// Replace mentions like <@123456789012345678> with the placeholder
 		content = strings.ReplaceAll(content, discord.UserMention(id), "@"+name)
+	}
+	return content
+}
+
+func ReplaceEmojis(content string) string {
+	matches := emojiRegex.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		emojiBlock := match[0]
+		emojiName := match[1]
+
+		// Replace emoji blocks like <a:emoji_name:123456789012345678> with emoji_name
+		content = strings.ReplaceAll(content, emojiBlock, emojiName)
 	}
 	return content
 }
