@@ -48,6 +48,7 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/samber/lo v1.50.0 // indirect
 	github.com/sasha-s/go-csync v0.0.0-20240107134140-fcbab37b09ad // indirect
 	github.com/vmihailenco/go-tinylfu v0.2.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect

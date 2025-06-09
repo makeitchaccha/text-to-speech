@@ -11,7 +11,6 @@ import (
 	"time"
 
 	texttospeech "cloud.google.com/go/texttospeech/apiv1"
-	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/handler"
@@ -67,7 +66,7 @@ func main() {
 	b := ttsbot.New(*cfg, Version, Commit)
 
 	opts := make([]engineOpt, 0)
-	var persistenceManager session.PersistenceManager
+	var redisClient *redis.Client
 	if cfg.Redis.Enabled {
 		slog.Info("Connecting to Redis", slog.String("url", cfg.Redis.Url))
 		option, err := redis.ParseURL(cfg.Redis.Url)
@@ -76,62 +75,21 @@ func main() {
 			os.Exit(-1)
 		}
 
-		redisClient := redis.NewClient(option)
+		redisClient = redis.NewClient(option)
 		if err := redisClient.Ping(context.Background()).Err(); err != nil {
 			slog.Error("Failed to connect to Redis", slog.Any("err", err))
 			os.Exit(-1)
 		}
+
 		slog.Info("Connected to Redis", slog.String("url", cfg.Redis.Url))
 
-		// not good way but we need to use application ID as identifier for Redis sessions...
-
-		readyChan := make(chan *events.Ready)
-		id, err := func() (snowflake.ID, error) {
-			tempClient, err := disgo.New(cfg.Bot.Token, bot.WithDefaultGateway(), bot.WithEventListenerChan(readyChan))
-			if err != nil {
-				slog.Error("Failed to create temporary bot client", slog.Any("err", err))
-				return 0, fmt.Errorf("failed to create temporary bot client: %w", err)
-			}
-			defer func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				tempClient.Close(ctx)
-				slog.Info("Temporary bot client closed")
-			}()
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			if err := tempClient.OpenGateway(ctx); err != nil {
-				slog.Error("Failed to open temporary bot client gateway", slog.Any("err", err))
-				return 0, fmt.Errorf("failed to open temporary bot client gateway: %w", err)
-			}
-			select {
-			case r := <-readyChan:
-				if r == nil {
-					slog.Error("Temporary bot client is nil")
-					return 0, fmt.Errorf("temporary bot client is nil")
-				}
-				slog.Info("Temporary bot client is ready", slog.String("applicationID", r.Client().ApplicationID().String()))
-				return r.Client().ApplicationID(), nil
-			case <-ctx.Done():
-				slog.Error("Timed out waiting for temporary bot client to be ready")
-				return 0, fmt.Errorf("timed out waiting for temporary bot client to be ready")
-			}
-		}()
-
-		if err != nil {
-			slog.Error("Failed to create temporary bot client", slog.Any("err", err))
-			os.Exit(-1)
-		}
-
-		persistenceManager = session.NewPersistenceManager(id, redisClient, 30*time.Second)
-		persistenceManager.StartHeartbeatLoop()
 		opts = append(opts, withCache(cache.New(&cache.Options{
 			Redis:      redisClient,
 			LocalCache: cache.NewTinyLFU(10, 5*time.Minute),
 		}), cfg.Redis.TTL))
 	}
 
-	sessionManager := session.NewSessionManager(persistenceManager)
+	sessionManager := session.NewSessionManager()
 
 	engineRegistry := tts.NewEngineRegistry()
 	registerDefaultEngines(engineRegistry, opts...)
@@ -171,40 +129,14 @@ func main() {
 	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
-	listeners := []bot.EventListener{h, bot.NewListenerFunc(b.OnReady), sessionManager.CreateMessageHandler(), sessionManager.CreateVoiceStateHandler()}
+	sessionRestorationListener := createSessionRestorationListener(redisClient, engineRegistry, presetResolver, sessionManager, trs, vrs)
 
-	if cfg.Redis.Enabled {
-		listeners = append(listeners, bot.NewListenerFunc(func(r *events.Ready) {
-			slog.Info("Restoring sessions from persistence")
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			persistenceManager.Restore(ctx, sessionManager, func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*session.Session, error) {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-				conn := r.Client().VoiceManager().GetConn(guildID)
-				if conn == nil {
-					conn = r.Client().VoiceManager().CreateConn(guildID)
-				}
-
-				err := conn.Open(ctx, voiceChannelID, false, true)
-				if err != nil {
-					slog.Error("Failed to open voice connection", slog.Any("err", err), slog.String("guildID", guildID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
-					return nil, err
-				}
-
-				// we may not use fallback but there is no way to get the text resource from the session currently.
-				// however, it is just fallback, so it does not matter much.
-				tr := trs.GetFallback()
-				session, err := session.New(engineRegistry, presetResolver, readingChannelID, conn, &tr, vrs)
-				if err != nil {
-					slog.Error("Failed to create session from persistence", slog.Any("err", err), slog.String("readingChannelID", readingChannelID.String()))
-					return nil, err
-				}
-
-				slog.Info("Restored session from persistence", slog.String("readingChannelID", readingChannelID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
-				return session, nil
-			})
-		}))
+	listeners := []bot.EventListener{
+		h,
+		bot.NewListenerFunc(b.OnReady),
+		sessionManager.CreateMessageHandler(),
+		sessionManager.CreateVoiceStateHandler(),
+		sessionRestorationListener,
 	}
 
 	if err = b.SetupBot(listeners...); err != nil {
@@ -330,4 +262,46 @@ func resolveDialector(cfg ttsbot.DatabaseConfig) (gorm.Dialector, error) {
 		return postgres.Open(cfg.Dsn), nil
 	}
 	return nil, fmt.Errorf("unknown database driver: %s", cfg.Driver)
+}
+
+func createSessionRestorationListener(redisClient *redis.Client, engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, sessionManager session.SessionManager, trs *i18n.TextResources, vrs *i18n.VoiceResources) bot.EventListener {
+	return bot.NewListenerFunc(func(r *events.Ready) {
+		slog.Info("Restoring sessions from persistence")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		heartbeatInterval := 30 * time.Second
+		persistenceManager := session.NewPersistenceManager(r.Application.ID, redisClient, heartbeatInterval)
+
+		persistenceManager.StartHeartbeatLoop()
+		sessionManager.AddObserver(persistenceManager)
+		persistenceManager.Restore(ctx, sessionManager, func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*session.Session, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			conn := r.Client().VoiceManager().GetConn(guildID)
+			if conn == nil {
+				conn = r.Client().VoiceManager().CreateConn(guildID)
+			}
+
+			err := conn.Open(ctx, voiceChannelID, false, true)
+			if err != nil {
+				slog.Error("Failed to open voice connection", slog.Any("err", err), slog.String("guildID", guildID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
+				return nil, err
+			}
+
+			// we may not use fallback but there is no way to get the text resource from the session currently.
+			// however, it is just fallback, so it does not matter much.
+			tr := trs.GetFallback()
+			session, err := session.New(engineRegistry, presetResolver, readingChannelID, conn, &tr, vrs)
+			if err != nil {
+				slog.Error("Failed to create session from persistence", slog.Any("err", err), slog.String("readingChannelID", readingChannelID.String()))
+				return nil, err
+			}
+
+			slog.Info("Restored session from persistence", slog.String("readingChannelID", readingChannelID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
+			return session, nil
+		})
+
+		slog.Info("Persistence manager started", slog.String("applicationID", r.Application.ID.String()), slog.Duration("heartbeatInterval", heartbeatInterval))
+	})
 }
