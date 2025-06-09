@@ -12,20 +12,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type (
-	PersistenceManager interface {
-		Save(guildID, voiceChannelID, readingChannelID snowflake.ID)
-		Delete(guildID, voiceChannelID snowflake.ID)
-		StartHeartbeatLoop()
+type SessionRestoreFunc func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*Session, error)
 
-		// Restore restores a session from persistent store.
-		Restore(ctx context.Context, sessionManager SessionManager, sessionRestoreFunc SessionRestoreFunc) error
-	}
+var _ SessionLifecycleObserver = (*PersistenceManager)(nil)
 
-	SessionRestoreFunc func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*Session, error)
-)
+type PersistenceManager struct {
+	NoOpSessionLifecycleObserver
 
-type persistenceManagerImpl struct {
 	// applicationID for the persistence manager in the redis store.
 	// If multiple instances of the bot are running, they should have different identifiers.
 	// recommended to use the bot's application ID but it can be any unique.
@@ -80,8 +73,8 @@ func (s *persistentSession) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func NewPersistenceManager(applicationID snowflake.ID, redisClient *redis.Client, heatbeatInterval time.Duration) PersistenceManager {
-	return &persistenceManagerImpl{
+func NewPersistenceManager(applicationID snowflake.ID, redisClient *redis.Client, heatbeatInterval time.Duration) *PersistenceManager {
+	return &PersistenceManager{
 		redisClient:        redisClient,
 		applicationID:      applicationID,
 		persistentSessions: make(map[sessionID]persistentSession),
@@ -89,50 +82,45 @@ func NewPersistenceManager(applicationID snowflake.ID, redisClient *redis.Client
 	}
 }
 
-func (p *persistenceManagerImpl) Save(guildID, voiceChannelID, readingChannelID snowflake.ID) {
+func (p *PersistenceManager) OnCreated(e SessionCreatedEvent) {
 	key := sessionID{
 		applicationID:  p.applicationID,
-		voiceChannelID: voiceChannelID,
+		voiceChannelID: e.VoiceChannelID,
 	}
 
 	session := persistentSession{
 		applicationID:    p.applicationID,
-		guildID:          guildID,
-		voiceChannelID:   voiceChannelID,
-		readingChannelID: readingChannelID,
+		guildID:          e.GuildID,
+		voiceChannelID:   e.VoiceChannelID,
+		readingChannelID: e.ReadingChannelID,
 	}
 	p.persistentSessions[key] = session
 
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := p.redisClient.Set(ctx, key.generateKey(), &session, p.ttl()).Err(); err != nil {
-			slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
-		}
-	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := p.redisClient.Set(ctx, key.generateKey(), &session, p.ttl()).Err(); err != nil {
+		slog.Error("Failed to persist session to Redis", slog.Any("sessionKey", key), slog.Any("error", err))
+	}
 }
 
-func (p *persistenceManagerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
+func (p *PersistenceManager) OnDeleted(e SessionDeletedEvent) {
 	delete(p.persistentSessions, sessionID{
 		applicationID:  p.applicationID,
-		voiceChannelID: voiceChannelID,
+		voiceChannelID: e.VoiceChannelID,
 	})
 
-	// delete the session from Redis
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := p.redisClient.Del(ctx, sessionID{
-			applicationID:  p.applicationID,
-			voiceChannelID: voiceChannelID,
-		}.generateKey()).Err(); err != nil {
-			slog.Error("Failed to delete session from Redis", slog.Any("sessionKey", voiceChannelID), slog.Any("error", err))
-		}
-		slog.Debug("Deleted session from Redis", slog.Any("voiceChannelID", voiceChannelID))
-	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := p.redisClient.Del(ctx, sessionID{
+		applicationID:  p.applicationID,
+		voiceChannelID: e.VoiceChannelID,
+	}.generateKey()).Err(); err != nil {
+		slog.Error("Failed to delete session from Redis", slog.Any("sessionKey", e.VoiceChannelID), slog.Any("error", err))
+	}
+	slog.Debug("Deleted session from Redis", slog.Any("voiceChannelID", e.VoiceChannelID))
 }
 
-func (p *persistenceManagerImpl) StartHeartbeatLoop() {
+func (p *PersistenceManager) StartHeartbeatLoop() {
 	ticker := time.NewTicker(p.heartbeatInterval)
 	ttl := p.ttl()
 	go func() {
@@ -152,7 +140,7 @@ func (p *persistenceManagerImpl) StartHeartbeatLoop() {
 	}()
 }
 
-func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager SessionManager, sessionRestoreFunc SessionRestoreFunc) error {
+func (p *PersistenceManager) Restore(ctx context.Context, sessionManager SessionManager, sessionRestoreFunc SessionRestoreFunc) error {
 	for done, cursor := false, uint64(0); !done; done = cursor == 0 {
 		keys, nextCursor, err := p.redisClient.Scan(ctx, cursor, keySessionPrefix+":*", 100).Result()
 		if err != nil {
@@ -197,6 +185,6 @@ func (p *persistenceManagerImpl) Restore(ctx context.Context, sessionManager Ses
 	return nil
 }
 
-func (p *persistenceManagerImpl) ttl() time.Duration {
+func (p *PersistenceManager) ttl() time.Duration {
 	return p.heartbeatInterval * 3
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/message"
+	"github.com/samber/lo"
 )
 
 type SessionManager interface {
@@ -22,11 +23,43 @@ type SessionManager interface {
 	// Delete removes a session by its voice channel ID.
 	Delete(guildID, voiceChannelID snowflake.ID)
 
+	// AddObserver adds an observer to listen for session lifecycle events.
+	AddObserver(observer SessionLifecycleObserver)
+	// RemoveObserver removes an observer from listening for session lifecycle events.
+	RemoveObserver(observer SessionLifecycleObserver)
+
 	// CreateMessageHandler creates an event listener for message creation events.
 	CreateMessageHandler() bot.EventListener
 	// CreateVoiceStateHandler creates an event listener for voice state update events.
 	CreateVoiceStateHandler() bot.EventListener
 	// GetByVoiceChannel retrieves a session by its voice channel ID.
+}
+
+type SessionLifecycleObserver interface {
+	OnCreated(event SessionCreatedEvent)
+	OnDeleted(event SessionDeletedEvent)
+}
+
+type NoOpSessionLifecycleObserver struct{}
+
+func (NoOpSessionLifecycleObserver) OnCreated(event SessionCreatedEvent) {}
+func (NoOpSessionLifecycleObserver) OnDeleted(event SessionDeletedEvent) {}
+
+type sessionEvent interface {
+}
+
+type sessionState struct {
+	GuildID          snowflake.ID
+	VoiceChannelID   snowflake.ID
+	ReadingChannelID snowflake.ID
+}
+
+type SessionCreatedEvent struct {
+	sessionState
+}
+
+type SessionDeletedEvent struct {
+	sessionState
 }
 
 var _ SessionManager = (*managerImpl)(nil)
@@ -37,16 +70,16 @@ type managerImpl struct {
 	readingToVoice map[snowflake.ID]snowflake.ID
 	voiceToReading map[snowflake.ID]snowflake.ID
 
-	persistenceManager PersistenceManager
+	observers []SessionLifecycleObserver
 }
 
-func NewSessionManager(persistenceManger PersistenceManager) SessionManager {
+func NewSessionManager() SessionManager {
 	return &managerImpl{
-		mu:                 sync.Mutex{},
-		sessions:           make(map[snowflake.ID]*Session),
-		readingToVoice:     make(map[snowflake.ID]snowflake.ID),
-		voiceToReading:     make(map[snowflake.ID]snowflake.ID),
-		persistenceManager: persistenceManger,
+		mu:             sync.Mutex{},
+		sessions:       make(map[snowflake.ID]*Session),
+		readingToVoice: make(map[snowflake.ID]snowflake.ID),
+		voiceToReading: make(map[snowflake.ID]snowflake.ID),
+		observers:      make([]SessionLifecycleObserver, 0),
 	}
 }
 
@@ -72,8 +105,16 @@ func (r *managerImpl) Add(guildID, voiceChannelID, readingChannelID snowflake.ID
 	r.sessions[voiceChannelID] = session
 	r.readingToVoice[readingChannelID] = voiceChannelID
 	r.voiceToReading[voiceChannelID] = readingChannelID
-	if r.persistenceManager != nil {
-		r.persistenceManager.Save(guildID, voiceChannelID, readingChannelID)
+
+	event := SessionCreatedEvent{
+		sessionState: sessionState{
+			GuildID:          guildID,
+			VoiceChannelID:   voiceChannelID,
+			ReadingChannelID: readingChannelID,
+		},
+	}
+	for _, observer := range r.observers {
+		observer.OnCreated(event)
 	}
 }
 
@@ -84,9 +125,31 @@ func (r *managerImpl) Delete(guildID, voiceChannelID snowflake.ID) {
 	readingChannelID := r.voiceToReading[voiceChannelID]
 	delete(r.readingToVoice, readingChannelID)
 	delete(r.voiceToReading, voiceChannelID)
-	if r.persistenceManager != nil {
-		r.persistenceManager.Delete(guildID, voiceChannelID)
+
+	event := SessionDeletedEvent{
+		sessionState: sessionState{
+			GuildID:          guildID,
+			VoiceChannelID:   voiceChannelID,
+			ReadingChannelID: readingChannelID,
+		},
 	}
+	for _, observer := range r.observers {
+		observer.OnDeleted(event)
+	}
+}
+
+func (m *managerImpl) AddObserver(observer SessionLifecycleObserver) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.observers = append(m.observers, observer)
+}
+
+func (m *managerImpl) RemoveObserver(observer SessionLifecycleObserver) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.observers = lo.Reject(m.observers, func(o SessionLifecycleObserver, _ int) bool {
+		return o == observer
+	})
 }
 
 func (m *managerImpl) CreateMessageHandler() bot.EventListener {
