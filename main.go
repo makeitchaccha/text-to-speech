@@ -270,9 +270,11 @@ func createSessionRestorationListener(redisClient *redis.Client, engineRegistry 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		persistenceManager := session.NewPersistenceManager(r.Application.ID, redisClient, 30*time.Second)
-		persistenceManager.StartHeartbeatLoop()
+		heartbeatInterval := 30 * time.Second
+		persistenceManager := session.NewPersistenceManager(r.Application.ID, redisClient, heartbeatInterval)
 
+		persistenceManager.StartHeartbeatLoop()
+		sessionManager.AddObserver(persistenceManager)
 		persistenceManager.Restore(ctx, sessionManager, func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*session.Session, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -299,5 +301,7 @@ func createSessionRestorationListener(redisClient *redis.Client, engineRegistry 
 			slog.Info("Restored session from persistence", slog.String("readingChannelID", readingChannelID.String()), slog.String("voiceChannelID", voiceChannelID.String()))
 			return session, nil
 		})
+
+		slog.Info("Persistence manager started", slog.String("applicationID", r.Application.ID.String()), slog.Duration("heartbeatInterval", heartbeatInterval))
 	})
 }
