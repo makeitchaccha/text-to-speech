@@ -1,0 +1,12 @@
+# Ignore data directories created by containers
+**/*_data
+
+# Ignore git and vscode directories
+.git
+.vscode
+
+# Ignore secret files
+.env
+config.toml
+*.pem
+*.key

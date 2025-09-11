@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY . . 
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -45,10 +45,7 @@ COPY --from=build /build/bot /bin/bot
 COPY --from=build /go/bin/goose /usr/local/bin/goose
 COPY --from=build /build/locales /app/locales
 COPY --from=build /build/migrations /app/migrations
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/bin/bot"]
 
 CMD ["-config", "/var/lib/config.toml"]
