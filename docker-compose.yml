@@ -3,21 +3,52 @@ services:
     image: ghcr.io/makeitchacchha/text-to-speech:latest
     restart: unless-stopped
     volumes:
-      - ./config.toml:/var/lib/config.toml
+      - ./config/bot/config.toml:/var/lib/config.toml
     command: -config=/var/lib/config.toml --sync-commands=true
     networks:
-      - bot
+      - texttospeech
 
   redis:
     image: redis:latest
     restart: unless-stopped
     volumes:
-      - redis_data:/data
+      - ./redis_data:/data
     ports:
       - "6379:6379"
     networks:
-      - bot
+      - texttospeech
+
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - texttospeech
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: text-to-speech:latest
+    command: migrate --dir /app/migrations status
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    networks:
+      - texttospeech
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 networks:
-  bot:
-    name: bot
+  texttospeech:
+    name: texttospeech

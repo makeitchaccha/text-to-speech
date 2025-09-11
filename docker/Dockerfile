@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
 
 WORKDIR /build
 
-COPY go.mod go.sum ./
+COPY go.mod go.sum ./ 
 
 RUN go mod download
 
@@ -28,6 +28,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GOARCH=$TARGETARCH \
     go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}'" -o bot github.com/makeitchaccha/text-to-speech
 
+# install goose v3 latest
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
 FROM alpine
 
 WORKDIR /app
@@ -39,8 +42,13 @@ RUN apk add --no-cache \
     mpg123
 
 COPY --from=build /build/bot /bin/bot
+COPY --from=build /go/bin/goose /usr/local/bin/goose
 COPY --from=build /build/locales /app/locales
+COPY --from=build /build/migrations /app/migrations
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/bin/bot"]
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["-config", "/var/lib/config.toml"]
