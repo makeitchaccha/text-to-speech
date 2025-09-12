@@ -43,6 +43,16 @@ See the [config.toml.example][14] file for an example configuration file. The co
 
 The text-to-speech bot is licensed under the [Apache License 2.0][5].
 
+## Third-Party Licenses
+
+This project uses third-party libraries that are subject to their own licenses.
+
+### goose
+- **License:** MIT License
+- **Copyright:** 2012 Liam Staskawicz, 2016 Vojtech Vitek, 2021 Michael Fridman, Vojtech Vitek
+- **Source:** [github.com/pressly/goose/v3][15]
+- The full license text is available at the [project's repository][16].
+
 
 [0]: https://goreportcard.com/badge/github.com/makeitchaccha/text-to-speech
 [1]: https://goreportcard.com/report/github.com/makeitchaccha/text-to-speech
@@ -67,3 +77,6 @@ The text-to-speech bot is licensed under the [Apache License 2.0][5].
 [13]: https://discord.com/developers/applications
 
 [14]: /config.example.toml
+
+[15]: https://github.com/pressly/goose/v3
+[16]: https://github.com/pressly/goose/blob/v3.25.0/LICENSE
