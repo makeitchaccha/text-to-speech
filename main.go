@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,12 +16,12 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/handler"
 	"github.com/disgoorg/snowflake/v2"
-	"github.com/glebarez/sqlite"
 	"github.com/go-redis/cache/v9"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // postgres driver
+	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	_ "modernc.org/sqlite" // sqlite driver
 
 	"github.com/makeitchaccha/text-to-speech/ttsbot"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/commands"
@@ -28,11 +29,14 @@ import (
 	"github.com/makeitchaccha/text-to-speech/ttsbot/preset"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/session"
 	"github.com/makeitchaccha/text-to-speech/ttsbot/tts"
+
+	_ "github.com/go-sql-driver/mysql" // mysql driver
 )
 
 var (
-	Version = "dev"
-	Commit  = "unknown"
+	Version                  = "dev"
+	Commit                   = "unknown"
+	ExpectedMigrationVersion string
 )
 
 func main() {
@@ -102,14 +106,15 @@ func main() {
 		}
 	}
 
-	dialector, err := resolveDialector(cfg.Database)
-	if err != nil {
-		slog.Error("Failed to resolve database dialector", slog.Any("err", err))
-		os.Exit(-1)
-	}
-	db, err := gorm.Open(dialector, &gorm.Config{})
+	db, err := sqlx.Connect(cfg.Database.Driver, cfg.Database.Dsn)
 	if err != nil {
 		slog.Error("Failed to connect to database", slog.Any("err", err))
+		os.Exit(-1)
+	}
+	defer db.Close()
+
+	if err := validateDBVersion(db, cfg.Database.Driver); err != nil {
+		slog.Error("Failed to validate database version", slog.Any("err", err))
 		os.Exit(-1)
 	}
 
@@ -169,6 +174,36 @@ func main() {
 	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
 	<-s
 	slog.Info("Shutting down bot...")
+}
+
+func validateDBVersion(db *sqlx.DB, driverName string) error {
+	if ExpectedMigrationVersion == "" {
+		slog.Warn("Expected migration version not set, skipping database schema validation. (This is normal in local development)")
+		return nil
+	}
+
+	slog.Info("Validating database schema version", "expected", ExpectedMigrationVersion)
+
+	if err := goose.SetDialect(driverName); err != nil {
+		return fmt.Errorf("failed to set goose dialect: %w", err)
+	}
+
+	currentVersion, err := goose.GetDBVersion(db.DB)
+	if err != nil {
+		return fmt.Errorf("failed to get current db version: %w", err)
+	}
+
+	expectedVersion, err := strconv.ParseInt(ExpectedMigrationVersion, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse expected migration version: %w", err)
+	}
+
+	if currentVersion != expectedVersion {
+		return fmt.Errorf("database schema version mismatch. expected: %d, but got: %d. please run migration", expectedVersion, currentVersion)
+	}
+
+	slog.Info("Database schema version validated successfully", "version", currentVersion)
+	return nil
 }
 
 func setupLogger(cfg ttsbot.LogConfig) {
@@ -250,18 +285,6 @@ func registerPreset(engineRegistry *tts.EngineRegistry, presetRegistry *preset.P
 
 	slog.Info("Registered preset", "preset", identifier, "engine", presetConfig.Engine, "language", presetConfig.Language, "voiceName", presetConfig.VoiceName)
 	return nil
-}
-
-func resolveDialector(cfg ttsbot.DatabaseConfig) (gorm.Dialector, error) {
-	switch cfg.Driver {
-	case "sqlite3":
-		return sqlite.Open(cfg.Dsn), nil
-	case "mysql":
-		return mysql.Open(cfg.Dsn), nil
-	case "postgres":
-		return postgres.Open(cfg.Dsn), nil
-	}
-	return nil, fmt.Errorf("unknown database driver: %s", cfg.Driver)
 }
 
 func createSessionRestorationListener(redisClient *redis.Client, engineRegistry *tts.EngineRegistry, presetResolver preset.PresetResolver, sessionManager session.SessionManager, trs *i18n.TextResources, vrs *i18n.VoiceResources) bot.EventListener {

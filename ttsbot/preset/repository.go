@@ -2,11 +2,13 @@ package preset
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/disgoorg/snowflake/v2"
-	"gorm.io/gorm"
+	"github.com/jmoiron/sqlx"
 )
 
 type Scope string
@@ -30,58 +32,70 @@ type PresetIDRepository interface {
 	Delete(ctx context.Context, scope Scope, ID snowflake.ID) error
 }
 
-func NewPresetIDRepository(db *gorm.DB) PresetIDRepository {
+func NewPresetIDRepository(db *sqlx.DB) PresetIDRepository {
 	return &presetIDRepositoryImpl{
-		db: db,
+		db:   db,
+		psql: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Question),
 	}
 }
 
 type presetIDRepositoryImpl struct {
-	db *gorm.DB
+	db   *sqlx.DB
+	psql squirrel.StatementBuilderType
 }
 
 type ScopedPresetID struct {
-	gorm.Model
-	Scope     Scope        `gorm:"primaryKey"`
-	ID        snowflake.ID `gorm:"primaryKey"`
-	PresetID  PresetID     `gorm:"type:varchar(255);not null"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Scope     Scope        `db:"scope"`
+	ID        snowflake.ID `db:"id"`
+	PresetID  PresetID     `db:"preset_id"`
+	CreatedAt time.Time    `db:"created_at"`
+	UpdatedAt time.Time    `db:"updated_at"`
 }
 
 func (r *presetIDRepositoryImpl) Find(ctx context.Context, scope Scope, ID snowflake.ID) (PresetID, error) {
-	var scopedPresetID ScopedPresetID
-	if err := r.db.WithContext(ctx).Where("scope = ? AND id = ?", scope, ID).First(&scopedPresetID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	query, args, err := r.psql.Select("preset_id").
+		From("scoped_preset_ids").
+		Where(squirrel.Eq{"scope": scope, "id": ID}).
+		ToSql()
+	if err != nil {
+		return "", err
+	}
+
+	var presetID PresetID
+	if err := r.db.GetContext(ctx, &presetID, query, args...); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", ErrNotFound
 		}
 		return "", err
 	}
-	return scopedPresetID.PresetID, nil
+	return presetID, nil
 }
 
 func (r *presetIDRepositoryImpl) Save(ctx context.Context, scope Scope, ID snowflake.ID, presetID PresetID) error {
-	scopedPresetID := ScopedPresetID{
-		Scope:    scope,
-		ID:       ID,
-		PresetID: presetID,
-	}
-
-	if err := r.db.WithContext(ctx).Save(&scopedPresetID).Error; err != nil {
+	now := time.Now()
+	query, args, err := r.psql.Insert("scoped_preset_ids").
+		Columns("scope", "id", "preset_id", "created_at", "updated_at").
+		Values(scope, ID, presetID, now, now).
+		Suffix("ON CONFLICT(scope, id) DO UPDATE SET preset_id = ?, updated_at = ?", presetID, now).
+		ToSql()
+	if err != nil {
 		return err
 	}
-	return nil
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	return err
 }
 
 func (r *presetIDRepositoryImpl) Delete(ctx context.Context, scope Scope, ID snowflake.ID) error {
-	if err := r.db.WithContext(ctx).Where("scope = ? AND id = ?", scope, ID).Delete(&ScopedPresetID{}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrNotFound
-		}
+	query, args, err := r.psql.Delete("scoped_preset_ids").
+		Where(squirrel.Eq{"scope": scope, "id": ID}).
+		ToSql()
+	if err != nil {
 		return err
 	}
-	return nil
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	return err
 }
 
 type MockPresetIDRepository struct {
