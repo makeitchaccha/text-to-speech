@@ -11,8 +11,6 @@ services:
   redis:
     image: redis:latest
     restart: unless-stopped
-    ports:
-      - '6379:6379'
     volumes:
       - ./redis_data:/data
     networks:
@@ -24,7 +22,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -56,3 +54,7 @@ services:
 networks:
   texttospeech:
     name: texttospeech
+
+volumes:
+  postgres:
+    name: postgres
