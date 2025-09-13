@@ -1,6 +1,6 @@
 services:
   bot:
-    image: ghcr.io/makeitchacchha/text-to-speech:latest
+    image: ghcr.io/makeitchaccha/text-to-speech:latest
     restart: unless-stopped
     volumes:
       - ./config/bot/config.toml:/var/lib/config.toml
@@ -48,13 +48,13 @@ services:
       GOOSE_MIGRATION_DIR: /app/migrations
     networks:
       - texttospeech
+    command: up
     entrypoint: goose
-    command: status
-
-networks:
-  texttospeech:
-    name: texttospeech
 
 volumes:
   postgres:
     name: postgres
+
+networks:
+  texttospeech:
+    name: texttospeech
