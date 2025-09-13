@@ -17,25 +17,25 @@ default_lang = "en-US"
 # fallback preset name
 # this preset will be used if the user and guild does not have a preset configured.
 # they must be defined in the [presets] section.
-fallback_preset_id = "wavenet-A-woman"
+fallback_preset_id = "wavenet-a-woman"
 
 # tts (text-to-speech) configuration
 # the values here are used to configure the text-to-speech.
 # you can find the list of available voices here:
 #  engine = "google" -> https://cloud.google.com/text-to-speech/docs/voices
-[presets.wavenet-A-woman]
+[presets.wavenet-a-woman]
 engine = "google"
 language = "ja-JP"
 voice_name = "ja-JP-Wavenet-A"
 speaking_rate = 1.2
 
-[presets.wavenet-C-man]
+[presets.wavenet-c-man]
 engine = "google"
 language = "ja-JP"
 voice_name = "ja-JP-Wavenet-C"
 speaking_rate = 1.2
 
-[presets.wavenet-D-man]
+[presets.wavenet-d-man]
 language = "ja-JP"
 voice_name = "ja-JP-Wavenet-D"
 speaking_rate = 1.2
