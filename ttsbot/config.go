@@ -2,79 +2,134 @@ package ttsbot
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
-	"os"
+	"reflect"
+	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 )
 
 func LoadConfig(path string) (*Config, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open config: %w", err)
+	v := viper.New()
+	v.SetConfigFile(path)
+	v.SetConfigType("toml")
+
+	v.SetEnvPrefix("ttsbot")
+	replacer := strings.NewReplacer(".", "_")
+	v.SetEnvKeyReplacer(replacer)
+	v.AutomaticEnv()
+
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found; ignore error if it's just not there
+			fmt.Printf("Warning: Config file not found at %s, using defaults and environment variables.\n", path)
+		} else {
+			return nil, fmt.Errorf("failed to read config: %w", err)
+		}
 	}
 
 	var cfg Config
-	md, err := toml.NewDecoder(file).Decode(&cfg)
+	err := v.Unmarshal(&cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		stringToSlogLevelHookFunc(),
+		stringToSnowflakeIDSliceHookFunc(),
+	)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-
-	if len(md.Undecoded()) > 0 {
-		return nil, fmt.Errorf("config contains undecoded fields: %v", md.Undecoded())
-	}
-
-	overrideString(&cfg.Bot.Token, "BOT_TOKEN")
 
 	return &cfg, nil
 }
 
-func overrideString(value *string, envVar string) {
-	if envValue, exists := os.LookupEnv(envVar); exists && envValue != "" {
-		*value = envValue
-	} else if *value == "" {
-		log.Printf("Warning: %s is not set in the config or environment, using empty string as default", envVar)
-	}
-}
-
 type Config struct {
-	Log      LogConfig               `toml:"log"`
-	Bot      BotConfig               `toml:"bot"`
-	Presets  map[string]PresetConfig `toml:"presets"`
-	Database DatabaseConfig          `toml:"database"`
-	Redis    RedisConfig             `toml:"redis"`
+	Log      LogConfig               `mapstructure:"log"`
+	Bot      BotConfig               `mapstructure:"bot"`
+	Presets  map[string]PresetConfig `mapstructure:"presets"`
+	Database DatabaseConfig          `mapstructure:"database"`
+	Redis    RedisConfig             `mapstructure:"redis"`
 }
 
 type BotConfig struct {
-	DevGuilds        []snowflake.ID `toml:"dev_guilds"`
-	Token            string         `toml:"token"`
-	Language         string         `toml:"language"`
-	FallbackPresetID string         `toml:"fallback_preset_id"`
+	DevGuilds        []snowflake.ID `mapstructure:"dev_guilds"`
+	Token            string         `mapstructure:"token"`
+	Language         string         `mapstructure:"default_lang"`
+	FallbackPresetID string         `mapstructure:"fallback_preset_id"`
 }
 
 type LogConfig struct {
-	Level     slog.Level `toml:"level"`
-	Format    string     `toml:"format"`
-	AddSource bool       `toml:"add_source"`
+	Level     slog.Level `mapstructure:"level"`
+	Format    string     `mapstructure:"format"`
+	AddSource bool       `mapstructure:"add_source"`
 }
 
 type PresetConfig struct {
-	Engine       string  `toml:"engine"`
-	Language     string  `toml:"language"`
-	VoiceName    string  `toml:"voice_name"`
-	SpeakingRate float64 `toml:"speaking_rate"`
+	Engine       string  `mapstructure:"engine"`
+	Language     string  `mapstructure:"language"`
+	VoiceName    string  `mapstructure:"voice_name"`
+	SpeakingRate float64 `mapstructure:"speaking_rate"`
 }
 
 type DatabaseConfig struct {
-	Driver string `toml:"driver"`
-	Dsn    string `toml:"dsn"`
+	Driver string `mapstructure:"driver"`
+	Dsn    string `mapstructure:"dsn"`
 }
 
 type RedisConfig struct {
-	Enabled bool          `toml:"enabled"`
-	Url     string        `toml:"url"`
-	TTL     time.Duration `toml:"ttl"`
+	Enabled bool          `mapstructure:"enable"` // Note: changed from 'enabled' to 'enable' to match config.example.toml
+	Url     string        `mapstructure:"url"`
+	TTL     time.Duration `mapstructure:"ttl"`
+}
+
+func stringToSlogLevelHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{},
+	) (interface{}, error) {
+		if f != reflect.String || t != reflect.TypeOf(slog.Level(0)).Kind() {
+			return data, nil
+		}
+		// assert that data is a string
+		switch s := data.(string); s {
+		case "debug":
+			return slog.LevelDebug, nil
+		case "info":
+			return slog.LevelInfo, nil
+		case "warn":
+			return slog.LevelWarn, nil
+		case "error":
+			return slog.LevelError, nil
+		default:
+			return nil, fmt.Errorf("unknown slog level: %s", s)
+		}
+	}
+}
+
+func stringToSnowflakeIDSliceHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{},
+	) (interface{}, error) {
+		if f != reflect.Slice || t != reflect.TypeOf([]snowflake.ID{}).Kind() {
+			return data, nil
+		}
+		var ids []snowflake.ID
+		for _, item := range data.([]interface{}) {
+			str, ok := item.(string)
+			if !ok {
+				// If it's not a string, try to convert it to string (e.g., from int in TOML)
+				str = fmt.Sprintf("%v", item)
+			}
+			id, err := snowflake.Parse(str)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse snowflake ID '%s': %w", str, err)
+			}
+			ids = append(ids, id)
+		}
+		return ids, nil
+	}
 }
