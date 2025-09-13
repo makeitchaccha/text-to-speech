@@ -42,7 +42,7 @@ RUN apk add --no-cache \
     mpg123
 
 COPY --from=build /build/bot /bin/bot
-COPY --from=build /go/bin/goose /usr/local/bin/goose
+COPY --from=build /go/bin/goose /bin/goose
 COPY --from=build /build/locales /app/locales
 COPY --from=build /build/migrations /app/migrations
 
