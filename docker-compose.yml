@@ -1,6 +1,6 @@
 services:
   bot:
-    image: ghcr.io/makeitchaccha/text-to-speech:latest
+    image: ghcr.io/makeitchaccha/text-to-speech:${APP_VERSION}
     restart: unless-stopped
     volumes:
       - ./config/bot/config.toml:/var/lib/config.toml
@@ -15,7 +15,7 @@ services:
     image: redis:latest
     restart: unless-stopped
     volumes:
-      - ./redis_data:/data
+      - redis-data:/data
     networks:
       - texttospeech
 
@@ -25,7 +25,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgres:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -41,7 +41,7 @@ services:
       retries: 5
 
   migrate:
-    image: text-to-speech:latest
+    image: ghcr.io/makeitchaccha/text-to-speech:${APP_VERSION}
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,8 +55,8 @@ services:
     entrypoint: goose
 
 volumes:
-  postgres:
-    name: postgres
+  postgres-data: null
+  redis-data: null
 
 networks:
   texttospeech:
