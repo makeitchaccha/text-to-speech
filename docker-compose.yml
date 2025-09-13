@@ -27,7 +27,7 @@ services:
       - texttospeech
     healthcheck:
       test:
-        - CMD
+        - CMD-SHELL
         - redis-cli ping
       interval: 5s
       timeout: 5s
@@ -65,7 +65,7 @@ services:
       GOOSE_MIGRATION_DIR: /app/migrations
     networks:
       - texttospeech
-    command: status
+    command: up
     entrypoint: goose
 
 volumes:
