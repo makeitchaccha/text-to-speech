@@ -2,8 +2,15 @@ services:
   bot:
     image: ghcr.io/makeitchaccha/text-to-speech:${APP_VERSION}
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./config/bot/config.toml:/var/lib/config.toml
+      - ./config.toml:/var/lib/config.toml
     environment:
       TTSBOT_DATABASE_DRIVER: postgres
       TTSBOT_DATABASE_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
@@ -18,6 +25,13 @@ services:
       - redis-data:/data
     networks:
       - texttospeech
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:latest
@@ -51,7 +65,7 @@ services:
       GOOSE_MIGRATION_DIR: /app/migrations
     networks:
       - texttospeech
-    command: up
+    command: status
     entrypoint: goose
 
 volumes:
