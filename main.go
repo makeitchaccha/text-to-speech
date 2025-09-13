@@ -134,14 +134,17 @@ func main() {
 	h.Command("/preset", commands.PresetHandler(presetRegistry, presetResolver, preset.NewPresetIDRepository(db), trs))
 	h.Command("/version", commands.VersionHandler(b))
 
-	sessionRestorationListener := createSessionRestorationListener(redisClient, engineRegistry, presetResolver, sessionManager, trs, vrs)
-
 	listeners := []bot.EventListener{
 		h,
 		bot.NewListenerFunc(b.OnReady),
 		sessionManager.CreateMessageHandler(),
 		sessionManager.CreateVoiceStateHandler(),
-		sessionRestorationListener,
+	}
+
+	// FIXME: make this optional via config and write this in safety way.
+	if cfg.Redis.Enabled {
+		sessionRestorationListener := createSessionRestorationListener(redisClient, engineRegistry, presetResolver, sessionManager, trs, vrs)
+		listeners = append(listeners, sessionRestorationListener)
 	}
 
 	if err = b.SetupBot(listeners...); err != nil {
