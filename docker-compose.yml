@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./config/bot/config.toml:/var/lib/config.toml
+    environment:
+      TTSBOT_DATABASE_DRIVER: postgres
+      TTSBOT_DATABASE_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     networks:
       - texttospeech
     command: '-config=/var/lib/config.toml --sync-commands=true'
