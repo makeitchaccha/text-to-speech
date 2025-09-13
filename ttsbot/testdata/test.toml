@@ -1,0 +1,25 @@
+[log]
+level = "debug"
+format = "json"
+add_source = true
+
+[bot]
+dev_guilds = [12345, 67890]
+token = "default_bot_token"
+default_lang = "en-US"
+fallback_preset_id = "test-preset"
+
+[presets.test-preset]
+engine = "google"
+language = "en-US"
+voice_name = "en-US-Wavenet-A"
+speaking_rate = 1.0
+
+[database]
+driver = "sqlite3"
+dsn = "./test.db"
+
+[redis]
+enable = true
+url = "redis://localhost:6379/1"
+ttl = "2h"

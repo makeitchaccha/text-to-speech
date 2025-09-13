@@ -12,7 +12,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	configPath := filepath.Join("testdata", "config.toml")
+	configPath := filepath.Join("testdata", "test.toml")
 
 	// Set environment variables to override values
 	os.Setenv("TTSBOT_BOT_TOKEN", "env_bot_token")
