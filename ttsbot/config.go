@@ -1,6 +1,7 @@
 package ttsbot
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -23,7 +24,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		if errors.Is(err, viper.ConfigFileNotFoundError{}) {
 			// Config file not found; ignore error if it's just not there
 			fmt.Printf("Warning: Config file not found at %s, using defaults and environment variables.\n", path)
 		} else {
