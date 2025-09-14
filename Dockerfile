@@ -26,10 +26,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=1 \
     GOOS=$TARGETOS \
     GOARCH=$TARGETARCH \
-    go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}'" -o bot github.com/makeitchaccha/text-to-speech
+    go build -ldflags="-X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -s -w" -trimpath -o bot github.com/makeitchaccha/text-to-speech
 
 # install goose v3 latest
-RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+RUN go install -tags 'no_clickhouse no_libsql no_mssql no_vertica no_ydb' -ldflags="-s -w" github.com/pressly/goose/v3/cmd/goose@latest
 
 FROM alpine
 
