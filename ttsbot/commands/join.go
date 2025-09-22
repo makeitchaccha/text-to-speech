@@ -40,24 +40,6 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 			return e.CreateMessage(friendlyErr.Message())
 		}
 
-		guildID := *e.GuildID()
-
-		voiceManager := e.Client().VoiceManager()
-		conn := voiceManager.GetConn(guildID)
-		connected := conn != nil
-		if connected && *conn.ChannelID() == *voiceChannelID {
-			return e.CreateMessage(discord.NewMessageCreateBuilder().
-				AddEmbeds(message.BuildErrorEmbed(tr).
-					SetDescription(tr.Commands.Join.ErrorAlreadyStarted).
-					Build()).
-				Build())
-		}
-
-		if !connected {
-			slog.Info("Creating voice connection", "guildID", guildID, "channelID", *voiceChannelID)
-			conn = voiceManager.CreateConn(guildID)
-		}
-
 		err = e.DeferCreateMessage(false)
 		if err != nil {
 			return err
@@ -66,8 +48,25 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 		// Connect to the voice channel in go routine
 		// Why? To establish the connection, we need to wait for the voice state update event
 		// and waiting for it in the same goroutine would block the response from server.
-
 		go func() {
+			guildID := *e.GuildID()
+			voiceManager := e.Client().VoiceManager()
+			conn := voiceManager.GetConn(guildID)
+			connected := conn != nil
+			if connected && *conn.ChannelID() == *voiceChannelID {
+				e.CreateMessage(discord.NewMessageCreateBuilder().
+					AddEmbeds(message.BuildErrorEmbed(tr).
+						SetDescription(tr.Commands.Join.ErrorAlreadyStarted).
+						Build()).
+					Build())
+				return
+			}
+
+			if !connected {
+				slog.Info("Creating voice connection", "guildID", guildID, "channelID", *voiceChannelID)
+				conn = voiceManager.CreateConn(guildID)
+			}
+
 			slog.Info("Connecting to voice channel", "guildID", guildID, "channelID", voiceChannelID)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
