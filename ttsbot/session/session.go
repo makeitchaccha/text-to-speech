@@ -197,13 +197,13 @@ func (s *Session) onMessageCreate(event *events.MessageCreate) {
 
 	slog.Debug("Received message for TTS", "messageID", event.Message.ID, "content", event.Message.Content)
 
-	member, err := event.Client().Rest().GetMember(*event.GuildID, event.Message.Author.ID)
+	member, err := event.Client().Rest.GetMember(*event.GuildID, event.Message.Author.ID)
 	if err != nil {
 		slog.Error("Failed to get member for message author", slog.Any("err", err), slog.String("userID", event.Message.Author.ID.String()))
 		return
 	}
 
-	mentions := createIdToNameMap(event.Client(), *event.GuildID, event.Message.Mentions)
+	mentions := createIdToNameMap(*event.Client(), *event.GuildID, event.Message.Mentions)
 
 	// make the content safe and ready for TTS.
 	content := event.Message.Content
@@ -250,7 +250,7 @@ func createIdToNameMap(client bot.Client, guildID snowflake.ID, users []discord.
 	for _, user := range users {
 		// we should fetch meber information to get the effective name
 		// but to avoid unnecessary API calls, we can use the member cache.
-		member, ok := client.Caches().Member(guildID, user.ID)
+		member, ok := client.Caches.Member(guildID, user.ID)
 		if !ok {
 			slog.Warn("Member not found in cache for mention", "mentionID", user.ID)
 			mentions[user.ID] = user.EffectiveName()
@@ -296,7 +296,7 @@ func (s *Session) onLeaveVoiceChannel(event *events.GuildVoiceStateUpdate) Leave
 	// notify someone left the voice channel
 	slog.Info("User left voice channel", "userID", voiceState.UserID, "guildID", voiceState.GuildID, "channelID", *voiceState.ChannelID)
 
-	if isVoiceChannelEmpty(event.Client().ID(), event.Client().Caches(), voiceState.GuildID, *voiceState.ChannelID, voiceState.UserID) {
+	if isVoiceChannelEmpty(event.Client().ID(), event.Client().Caches, voiceState.GuildID, *voiceState.ChannelID, voiceState.UserID) {
 		slog.Info("Voice channel is empty, closing session", "guildID", voiceState.GuildID, "channelID", *voiceState.ChannelID)
 		return LeaveResultClose
 	}
@@ -334,23 +334,23 @@ func isVoiceChannelEmpty(
 	}, guildID, channelID, ignoredUserID snowflake.ID,
 ) bool {
 	empty := true
-	cache.VoiceStatesForEach(guildID, func(voiceState discord.VoiceState) {
+	for voiceState := range cache.VoiceStates(guildID) {
 		// ignore voice states of the user who left the voice channel
 		if voiceState.UserID == ignoredUserID {
-			return
+			continue
 		}
 
 		// ignore the bot itself
 		if voiceState.UserID == selfID {
 			slog.Debug("Ignoring self in voice channel", "userID", voiceState.UserID, "guildID", guildID)
-			return
+			continue
 		}
 
 		if voiceState.ChannelID != nil && *voiceState.ChannelID == channelID {
 			empty = false
-			return
+			break
 		}
-	})
+	}
 
 	return empty
 }

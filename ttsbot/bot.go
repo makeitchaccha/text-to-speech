@@ -25,7 +25,7 @@ func New(cfg Config, version string, commit string) *Bot {
 
 type Bot struct {
 	Cfg       Config
-	Client    bot.Client
+	Client    *bot.Client
 	Paginator *paginator.Manager
 	Version   string
 	Commit    string

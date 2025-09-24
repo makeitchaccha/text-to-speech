@@ -304,9 +304,9 @@ func createSessionRestorationListener(redisClient *redis.Client, engineRegistry 
 		persistenceManager.Restore(ctx, sessionManager, func(guildID, voiceChannelID, readingChannelID snowflake.ID) (*session.Session, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			conn := r.Client().VoiceManager().GetConn(guildID)
+			conn := r.Client().VoiceManager.GetConn(guildID)
 			if conn == nil {
-				conn = r.Client().VoiceManager().CreateConn(guildID)
+				conn = r.Client().VoiceManager.CreateConn(guildID)
 			}
 
 			err := conn.Open(ctx, voiceChannelID, false, true)

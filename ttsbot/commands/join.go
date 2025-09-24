@@ -42,7 +42,7 @@ func JoinHandler(engineRegistry *tts.EngineRegistry, presetResolver preset.Prese
 
 		guildID := *e.GuildID()
 
-		voiceManager := e.Client().VoiceManager()
+		voiceManager := e.Client().VoiceManager
 		conn := voiceManager.GetConn(guildID)
 		connected := conn != nil
 		if connected && *conn.ChannelID() == *voiceChannelID {

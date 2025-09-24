@@ -54,7 +54,7 @@ func SafeGetVoiceChannelID(e *handler.CommandEvent, tr i18n.TextResource) (*snow
 	guildID := e.GuildID()
 
 	// user must be in a voice channel to use this command
-	voiceState, err := e.Client().Rest().GetUserVoiceState(*guildID, e.User().ID)
+	voiceState, err := e.Client().Rest.GetUserVoiceState(*guildID, e.User().ID)
 	var restErr rest.Error
 	if ok := errors.As(err, &restErr); ok {
 		switch restErr.Code {
