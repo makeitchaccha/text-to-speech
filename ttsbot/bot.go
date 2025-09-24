@@ -16,10 +16,9 @@ import (
 
 func New(cfg Config, version string, commit string) *Bot {
 	return &Bot{
-		Cfg:       cfg,
-		Paginator: paginator.New(),
-		Version:   version,
-		Commit:    commit,
+		Cfg:     cfg,
+		Version: version,
+		Commit:  commit,
 	}
 }
 
