@@ -11,7 +11,6 @@ import (
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
-	"github.com/disgoorg/paginator"
 )
 
 func New(cfg Config, version string, commit string) *Bot {
@@ -23,11 +22,10 @@ func New(cfg Config, version string, commit string) *Bot {
 }
 
 type Bot struct {
-	Cfg       Config
-	Client    *bot.Client
-	Paginator *paginator.Manager
-	Version   string
-	Commit    string
+	Cfg     Config
+	Client  *bot.Client
+	Version string
+	Commit  string
 }
 
 func (b *Bot) SetupBot(listeners ...bot.EventListener) error {
@@ -39,7 +37,6 @@ func (b *Bot) SetupBot(listeners ...bot.EventListener) error {
 			gateway.IntentGuildVoiceStates,
 		)),
 		bot.WithCacheConfigOpts(cache.WithCaches(cache.FlagGuilds, cache.FlagVoiceStates)),
-		bot.WithEventListeners(b.Paginator),
 		bot.WithEventListeners(listeners...),
 	)
 	if err != nil {
